@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:leasegauge/screens/lease_setup_screen.dart';
 
 void main() {
   runApp(const LeaseGaugeApp());
@@ -17,17 +18,7 @@ class LeaseGaugeApp extends StatelessWidget {
           seedColor: const Color(0xFF1565C0),
         ),
       ),
-      home: Scaffold(
-        appBar: AppBar(
-          title: const Text('LeaseGauge'),
-        ),
-        body: const Center(
-          child: Text(
-            'Know your mileage. Keep your lease on track.',
-            textAlign: TextAlign.center,
-          ),
-        ),
-      ),
+      home: const LeaseSetupScreen(),
     );
   }
 }

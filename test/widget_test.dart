@@ -2,15 +2,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:leasegauge/main.dart';
 
 void main() {
-  testWidgets('shows LeaseGauge title and tagline', (
+  testWidgets('shows the lease setup screen', (
       WidgetTester tester,
       ) async {
     await tester.pumpWidget(const LeaseGaugeApp());
 
-    expect(find.text('LeaseGauge'), findsOneWidget);
-    expect(
-      find.text('Know your mileage. Keep your lease on track.'),
-      findsOneWidget,
-    );
+    expect(find.text('Plan your lease'), findsOneWidget);
+    expect(find.text('Lease details'), findsOneWidget);
   });
 }
