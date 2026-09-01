@@ -21,19 +21,62 @@ LeaseCalculation calculateLease({
 }) {
   final usedDistanceKm = currentOdometerKm - startOdometerKm;
 
-  final remainingContractKm =
-      allowedDistanceKm - usedDistanceKm;
+  final remainingContractKm = allowedDistanceKm - usedDistanceKm;
 
-  final commuteReserveKm =
-      remainingWorkdays * commuteRoundTripKm;
+  final commuteReserveKm = remainingWorkdays * commuteRoundTripKm;
 
-  final leisureDistanceKm =
-      remainingContractKm - commuteReserveKm;
+  final leisureDistanceKm = remainingContractKm - commuteReserveKm;
 
   return LeaseCalculation(
     usedDistanceKm: usedDistanceKm,
     remainingContractKm: remainingContractKm,
     commuteReserveKm: commuteReserveKm,
     leisureDistanceKm: leisureDistanceKm,
+  );
+}
+
+int countWorkdays({required DateTime from, required DateTime until}) {
+  final startDate = DateTime.utc(from.year, from.month, from.day);
+
+  final endDate = DateTime.utc(until.year, until.month, until.day);
+
+  if (!startDate.isBefore(endDate)) {
+    return 0;
+  }
+
+  var workdays = 0;
+
+  for (
+    var date = startDate;
+    date.isBefore(endDate);
+    date = date.add(const Duration(days: 1))
+  ) {
+    final isWeekday =
+        date.weekday >= DateTime.monday && date.weekday <= DateTime.friday;
+
+    if (isWeekday) {
+      workdays++;
+    }
+  }
+
+  return workdays;
+}
+
+LeaseCalculation calculateLeaseForPeriod({
+  required double allowedDistanceKm,
+  required double startOdometerKm,
+  required double currentOdometerKm,
+  required DateTime from,
+  required DateTime returnDate,
+  required double commuteRoundTripKm,
+}) {
+  final remainingWorkdays = countWorkdays(from: from, until: returnDate);
+
+  return calculateLease(
+    allowedDistanceKm: allowedDistanceKm,
+    startOdometerKm: startOdometerKm,
+    currentOdometerKm: currentOdometerKm,
+    remainingWorkdays: remainingWorkdays,
+    commuteRoundTripKm: commuteRoundTripKm,
   );
 }
