@@ -12,6 +12,20 @@ class LeaseCalculation {
   final double leisureDistanceKm;
 }
 
+class LeisureBudgets {
+  const LeisureBudgets({
+    required this.totalKm,
+    required this.currentMonthKm,
+    required this.currentWeekKm,
+    required this.todayKm,
+  });
+
+  final double totalKm;
+  final double currentMonthKm;
+  final double currentWeekKm;
+  final double todayKm;
+}
+
 LeaseCalculation calculateLease({
   required double allowedDistanceKm,
   required double startOdometerKm,
@@ -78,5 +92,43 @@ LeaseCalculation calculateLeaseForPeriod({
     currentOdometerKm: currentOdometerKm,
     remainingWorkdays: remainingWorkdays,
     commuteRoundTripKm: commuteRoundTripKm,
+  );
+}
+
+LeisureBudgets calculateLeisureBudgets({
+  required double leisureDistanceKm,
+  required DateTime from,
+  required DateTime returnDate,
+}) {
+  final startDate = DateTime.utc(from.year, from.month, from.day);
+  final endDate = DateTime.utc(
+    returnDate.year,
+    returnDate.month,
+    returnDate.day,
+  );
+  final remainingDays = endDate.difference(startDate).inDays;
+
+  if (remainingDays <= 0) {
+    return LeisureBudgets(
+      totalKm: leisureDistanceKm,
+      currentMonthKm: 0,
+      currentWeekKm: 0,
+      todayKm: 0,
+    );
+  }
+
+  final dailyBudgetKm = leisureDistanceKm / remainingDays;
+  final nextMonth = DateTime.utc(startDate.year, startDate.month + 1);
+  final nextMonday = startDate.add(
+    Duration(days: DateTime.daysPerWeek + 1 - startDate.weekday),
+  );
+  final monthEnd = endDate.isBefore(nextMonth) ? endDate : nextMonth;
+  final weekEnd = endDate.isBefore(nextMonday) ? endDate : nextMonday;
+
+  return LeisureBudgets(
+    totalKm: leisureDistanceKm,
+    currentMonthKm: dailyBudgetKm * monthEnd.difference(startDate).inDays,
+    currentWeekKm: dailyBudgetKm * weekEnd.difference(startDate).inDays,
+    todayKm: dailyBudgetKm,
   );
 }

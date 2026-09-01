@@ -41,4 +41,30 @@ void main() {
     expect(result.commuteReserveKm, 200);
     expect(result.leisureDistanceKm, 29800);
   });
+
+  test('spreads leisure distance across month, week, and day', () {
+    final result = calculateLeisureBudgets(
+      leisureDistanceKm: 3000,
+      from: DateTime(2026, 9, 1),
+      returnDate: DateTime(2026, 10, 1),
+    );
+
+    expect(result.totalKm, 3000);
+    expect(result.currentMonthKm, 3000);
+    expect(result.currentWeekKm, 600);
+    expect(result.todayKm, 100);
+  });
+
+  test('keeps negative budgets visible when the lease is over plan', () {
+    final result = calculateLeisureBudgets(
+      leisureDistanceKm: -3000,
+      from: DateTime(2026, 9, 1),
+      returnDate: DateTime(2026, 10, 1),
+    );
+
+    expect(result.totalKm, -3000);
+    expect(result.currentMonthKm, -3000);
+    expect(result.currentWeekKm, -600);
+    expect(result.todayKm, -100);
+  });
 }

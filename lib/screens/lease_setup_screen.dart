@@ -21,6 +21,7 @@ class _LeaseSetupScreenState extends State<LeaseSetupScreen> {
   final _commuteDistanceController = TextEditingController();
   DateTime? _returnDate;
   LeaseCalculation? _calculation;
+  LeisureBudgets? _leisureBudgets;
 
   @override
   void initState() {
@@ -66,6 +67,11 @@ class _LeaseSetupScreenState extends State<LeaseSetupScreen> {
     return value == value.roundToDouble()
         ? value.toStringAsFixed(0)
         : value.toString();
+  }
+
+  String _formatSignedDistance(double value) {
+    final prefix = value > 0 ? '+' : '';
+    return '$prefix${value.toStringAsFixed(0)} km';
   }
 
   Future<void> _loadSavedValues() async {
@@ -128,17 +134,24 @@ class _LeaseSetupScreenState extends State<LeaseSetupScreen> {
       return;
     }
 
+    final today = DateUtils.dateOnly(DateTime.now());
     final calculation = calculateLeaseForPeriod(
       allowedDistanceKm: allowedDistance,
       startOdometerKm: startOdometer,
       currentOdometerKm: currentOdometer,
-      from: DateTime.now(),
+      from: today,
       returnDate: returnDate,
       commuteRoundTripKm: commuteDistance,
+    );
+    final leisureBudgets = calculateLeisureBudgets(
+      leisureDistanceKm: calculation.leisureDistanceKm,
+      from: today,
+      returnDate: returnDate,
     );
 
     setState(() {
       _calculation = calculation;
+      _leisureBudgets = leisureBudgets;
     });
 
     try {
@@ -298,17 +311,49 @@ class _LeaseSetupScreenState extends State<LeaseSetupScreen> {
                             '${_calculation!.commuteReserveKm.toStringAsFixed(0)} km',
                           ),
                           const Divider(height: 32),
-                          const Text('Available for leisure driving'),
+                          const Text('Leisure driving balance'),
                           const SizedBox(height: 4),
                           Text(
-                            '${_calculation!.leisureDistanceKm.toStringAsFixed(0)} km',
+                            _formatSignedDistance(_leisureBudgets!.totalKm),
                             style: Theme.of(context).textTheme.headlineMedium
                                 ?.copyWith(
-                                  color: _calculation!.leisureDistanceKm >= 0
+                                  color: _leisureBudgets!.totalKm >= 0
                                       ? Colors.green.shade700
                                       : Theme.of(context).colorScheme.error,
                                   fontWeight: FontWeight.bold,
                                 ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _leisureBudgets!.totalKm >= 0
+                                ? 'You are on track and can use this for leisure.'
+                                : 'You are over the plan. Reduce future driving if possible.',
+                          ),
+                          const Divider(height: 32),
+                          Text(
+                            'Suggested leisure budget',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 12),
+                          _BudgetRow(
+                            label: 'Rest of this month',
+                            value: _formatSignedDistance(
+                              _leisureBudgets!.currentMonthKm,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          _BudgetRow(
+                            label: 'Rest of this week',
+                            value: _formatSignedDistance(
+                              _leisureBudgets!.currentWeekKm,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          _BudgetRow(
+                            label: 'Today',
+                            value: _formatSignedDistance(
+                              _leisureBudgets!.todayKm,
+                            ),
                           ),
                         ],
                       ),
@@ -320,6 +365,23 @@ class _LeaseSetupScreenState extends State<LeaseSetupScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _BudgetRow extends StatelessWidget {
+  const _BudgetRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: Text(label)),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
+      ],
     );
   }
 }
