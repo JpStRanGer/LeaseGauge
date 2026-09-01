@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:leasegauge/data/lease_form_storage.dart';
 import 'package:leasegauge/domain/lease_calculator.dart';
 
 class LeaseSetupScreen extends StatefulWidget {
-  const LeaseSetupScreen({super.key});
+  const LeaseSetupScreen({super.key, this.storage});
+
+  final LeaseFormStore? storage;
 
   @override
   State<LeaseSetupScreen> createState() {
@@ -11,12 +14,20 @@ class LeaseSetupScreen extends StatefulWidget {
 }
 
 class _LeaseSetupScreenState extends State<LeaseSetupScreen> {
+  late final LeaseFormStore _storage;
   final _allowedDistanceController = TextEditingController();
   final _startOdometerController = TextEditingController();
   final _currentOdometerController = TextEditingController();
   final _commuteDistanceController = TextEditingController();
   DateTime? _returnDate;
   LeaseCalculation? _calculation;
+
+  @override
+  void initState() {
+    super.initState();
+    _storage = widget.storage ?? LeaseFormStorage();
+    _loadSavedValues();
+  }
 
   @override
   void dispose() {
@@ -51,7 +62,41 @@ class _LeaseSetupScreenState extends State<LeaseSetupScreen> {
     return double.tryParse(normalizedText);
   }
 
-  void _calculateLease() {
+  String _formatDistance(double value) {
+    return value == value.roundToDouble()
+        ? value.toStringAsFixed(0)
+        : value.toString();
+  }
+
+  Future<void> _loadSavedValues() async {
+    try {
+      final savedValues = await _storage.load();
+      if (!mounted || savedValues == null) {
+        return;
+      }
+
+      _allowedDistanceController.text = _formatDistance(
+        savedValues.allowedDistanceKm,
+      );
+      _startOdometerController.text = _formatDistance(
+        savedValues.startOdometerKm,
+      );
+      _currentOdometerController.text = _formatDistance(
+        savedValues.currentOdometerKm,
+      );
+      _commuteDistanceController.text = _formatDistance(
+        savedValues.commuteDistanceKm,
+      );
+
+      setState(() {
+        _returnDate = savedValues.returnDate;
+      });
+    } on Exception {
+      // The form remains usable even if local storage is unavailable.
+    }
+  }
+
+  Future<void> _calculateLease() async {
     FocusScope.of(context).unfocus();
 
     final allowedDistance = _readDistance(_allowedDistanceController);
@@ -95,6 +140,36 @@ class _LeaseSetupScreenState extends State<LeaseSetupScreen> {
     setState(() {
       _calculation = calculation;
     });
+
+    try {
+      await _storage.save(
+        LeaseFormValues(
+          allowedDistanceKm: allowedDistance,
+          startOdometerKm: startOdometer,
+          currentOdometerKm: currentOdometer,
+          commuteDistanceKm: commuteDistance,
+          returnDate: returnDate,
+        ),
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Mileage plan saved on this device.')),
+      );
+    } on Exception {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('The plan was calculated but could not be saved.'),
+        ),
+      );
+    }
   }
 
   @override
