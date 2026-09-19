@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:leasegauge/domain/lease_calculator.dart';
 
 class LeaseFormValues {
   const LeaseFormValues({
@@ -7,6 +8,7 @@ class LeaseFormValues {
     required this.currentOdometerKm,
     required this.commuteDistanceKm,
     required this.returnDate,
+    this.commuteWeekdays = defaultCommuteWeekdays,
   });
 
   final double allowedDistanceKm;
@@ -14,6 +16,7 @@ class LeaseFormValues {
   final double currentOdometerKm;
   final double commuteDistanceKm;
   final DateTime returnDate;
+  final Set<int> commuteWeekdays;
 }
 
 abstract interface class LeaseFormStore {
@@ -31,6 +34,7 @@ class LeaseFormStorage implements LeaseFormStore {
   static const _currentOdometerKey = 'lease.currentOdometerKm';
   static const _commuteDistanceKey = 'lease.commuteDistanceKm';
   static const _returnDateKey = 'lease.returnDate';
+  static const _commuteWeekdaysKey = 'lease.commuteWeekdays';
 
   final SharedPreferencesAsync _preferences;
 
@@ -44,6 +48,16 @@ class LeaseFormStorage implements LeaseFormStore {
     final returnDate = returnDateText == null
         ? null
         : DateTime.tryParse(returnDateText);
+    final storedWeekdays = await _preferences.getStringList(
+      _commuteWeekdaysKey,
+    );
+    final commuteWeekdays = storedWeekdays == null
+        ? defaultCommuteWeekdays
+        : storedWeekdays
+              .map(int.tryParse)
+              .whereType<int>()
+              .where((day) => day >= DateTime.monday && day <= DateTime.sunday)
+              .toSet();
 
     if (allowedDistance == null ||
         startOdometer == null ||
@@ -59,6 +73,7 @@ class LeaseFormStorage implements LeaseFormStore {
       currentOdometerKm: currentOdometer,
       commuteDistanceKm: commuteDistance,
       returnDate: returnDate,
+      commuteWeekdays: commuteWeekdays,
     );
   }
 
@@ -72,6 +87,12 @@ class LeaseFormStorage implements LeaseFormStore {
       _preferences.setString(
         _returnDateKey,
         values.returnDate.toIso8601String(),
+      ),
+      _preferences.setStringList(
+        _commuteWeekdaysKey,
+        (values.commuteWeekdays.toList()..sort())
+            .map((day) => day.toString())
+            .toList(),
       ),
     ]);
   }

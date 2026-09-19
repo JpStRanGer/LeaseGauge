@@ -26,6 +26,14 @@ class LeisureBudgets {
   final double todayKm;
 }
 
+const defaultCommuteWeekdays = <int>{
+  DateTime.monday,
+  DateTime.tuesday,
+  DateTime.wednesday,
+  DateTime.thursday,
+  DateTime.friday,
+};
+
 LeaseCalculation calculateLease({
   required double allowedDistanceKm,
   required double startOdometerKm,
@@ -49,7 +57,11 @@ LeaseCalculation calculateLease({
   );
 }
 
-int countWorkdays({required DateTime from, required DateTime until}) {
+int countWorkdays({
+  required DateTime from,
+  required DateTime until,
+  Set<int> commuteWeekdays = defaultCommuteWeekdays,
+}) {
   final startDate = DateTime.utc(from.year, from.month, from.day);
 
   final endDate = DateTime.utc(until.year, until.month, until.day);
@@ -65,10 +77,7 @@ int countWorkdays({required DateTime from, required DateTime until}) {
     date.isBefore(endDate);
     date = date.add(const Duration(days: 1))
   ) {
-    final isWeekday =
-        date.weekday >= DateTime.monday && date.weekday <= DateTime.friday;
-
-    if (isWeekday) {
+    if (commuteWeekdays.contains(date.weekday)) {
       workdays++;
     }
   }
@@ -83,8 +92,13 @@ LeaseCalculation calculateLeaseForPeriod({
   required DateTime from,
   required DateTime returnDate,
   required double commuteRoundTripKm,
+  Set<int> commuteWeekdays = defaultCommuteWeekdays,
 }) {
-  final remainingWorkdays = countWorkdays(from: from, until: returnDate);
+  final remainingWorkdays = countWorkdays(
+    from: from,
+    until: returnDate,
+    commuteWeekdays: commuteWeekdays,
+  );
 
   return calculateLease(
     allowedDistanceKm: allowedDistanceKm,

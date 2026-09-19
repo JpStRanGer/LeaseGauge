@@ -26,6 +26,31 @@ void main() {
     expect(workdays, 5);
   });
 
+  test('counts only the selected commute days, including weekends', () {
+    final days = countWorkdays(
+      from: DateTime(2026, 9, 7),
+      until: DateTime(2026, 9, 14),
+      commuteWeekdays: {DateTime.tuesday, DateTime.saturday},
+    );
+
+    expect(days, 2);
+  });
+
+  test('an empty commute schedule reserves no kilometres', () {
+    final result = calculateLeaseForPeriod(
+      allowedDistanceKm: 1000,
+      startOdometerKm: 0,
+      currentOdometerKm: 100,
+      from: DateTime(2026, 9, 7),
+      returnDate: DateTime(2026, 9, 14),
+      commuteRoundTripKm: 40,
+      commuteWeekdays: {},
+    );
+
+    expect(result.commuteReserveKm, 0);
+    expect(result.leisureDistanceKm, 900);
+  });
+
   test('calculates lease using the return date', () {
     final result = calculateLeaseForPeriod(
       allowedDistanceKm: 45000,
