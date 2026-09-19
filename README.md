@@ -1,6 +1,13 @@
-# leasegauge
+# LeaseGauge
 
-A new Flutter project.
+A lease-distance planner with reserved commuting and leisure-distance budgets.
+Built with Flutter for Android, iOS and web. Odometer readings are currently manual.
+
+## Android and Volvo testing
+
+See [the Android testing and signing guide](docs/android-testing.md) for local
+emulator testing, a password-prompted release build, and the remaining Google
+Play car-category/distribution checks. No release is published automatically.
 
 ## Getting Started
 

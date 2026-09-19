@@ -1,0 +1,14 @@
+# Copy this file to key.properties in the same folder, then fill in all values.
+# key.properties and keystore files are ignored by Git. Keep a secure backup.
+# Alternative: run tools/build-android-release.ps1 to enter passwords privately
+# for one build without saving them in this file.
+# Process environment variables override the corresponding fields:
+# LEASEGAUGE_KEYSTORE_PATH, LEASEGAUGE_STORE_PASSWORD,
+# LEASEGAUGE_KEY_ALIAS, LEASEGAUGE_KEY_PASSWORD.
+# Use forward slashes for Windows paths, for example:
+# storeFile=C:/Users/your-user/.android/leasegauge-upload.jks
+# A relative storeFile path is resolved from the android folder.
+storeFile=
+storePassword=
+keyAlias=
+keyPassword=
