@@ -29,6 +29,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
   bool _savingOdometer = false;
   bool _volvoBusy = false;
   bool _volvoConnected = false;
+  bool _odometerDetailsExpanded = false;
   _VolvoRefreshFeedback _volvoRefreshFeedback = _VolvoRefreshFeedback.idle;
   String? _volvoMessage;
   DateTime? _volvoUpdatedAt;
@@ -579,6 +580,14 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
             from: today,
             returnDate: plan!.returnDate,
           );
+    final collapseOdometer =
+        _volvoConnected &&
+        !_odometerDetailsExpanded &&
+        !_volvoBusy &&
+        _phonePairing == null &&
+        _volvoRefreshFeedback != _VolvoRefreshFeedback.loading &&
+        (_volvoMessage == null ||
+            _volvoRefreshFeedback == _VolvoRefreshFeedback.success);
 
     return Scaffold(
       appBar: AppBar(
@@ -637,290 +646,364 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      Card(
-                        margin: EdgeInsets.zero,
-                        child: Padding(
-                          padding: const EdgeInsets.all(22),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Current odometer',
-                                style: Theme.of(context).textTheme.titleLarge
-                                    ?.copyWith(fontWeight: FontWeight.w700),
+                      if (collapseOdometer)
+                        Card(
+                          margin: EdgeInsets.zero,
+                          clipBehavior: Clip.antiAlias,
+                          child: InkWell(
+                            key: const Key('expandOdometerStatus'),
+                            onTap: () {
+                              setState(() {
+                                _odometerDetailsExpanded = true;
+                                if (_volvoRefreshFeedback ==
+                                    _VolvoRefreshFeedback.success) {
+                                  _volvoRefreshFeedback =
+                                      _VolvoRefreshFeedback.idle;
+                                  _volvoMessage = null;
+                                }
+                              });
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 18,
+                                vertical: 14,
                               ),
-                              const SizedBox(height: 6),
-                              Text(
-                                _volvoConnected
-                                    ? 'The latest reading comes from Volvo. You can also enter one manually.'
-                                    : _volvoEnabled
-                                    ? 'Enter a reading manually, or connect Volvo for automatic updates.'
-                                    : 'Enter a reading manually.',
-                                style: TextStyle(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                                ),
-                              ),
-                              const SizedBox(height: 14),
-                              Chip(
-                                avatar: Icon(
-                                  _volvoConnected
-                                      ? Icons.sync_rounded
-                                      : Icons.edit_outlined,
-                                  size: 18,
-                                ),
-                                label: Text(
-                                  _volvoConnected
-                                      ? 'Volvo connected'
-                                      : 'Manual entry',
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              Text(
-                                _volvoConnected
-                                    ? 'The app checks Volvo on a fresh launch or when you tap Update from Volvo. Manual entry stays available below.'
-                                    : _volvoEnabled
-                                    ? 'Connect your Volvo ID for updates when the app starts and on demand.'
-                                    : 'Volvo updates are not available in this version.',
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                              if (_volvoEnabled) ...[
-                                const SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 8,
-                                  children: [
-                                    TextButton.icon(
-                                      onPressed: _volvoBusy
-                                          ? null
-                                          : (_volvoConnected
-                                                ? () => _refreshVolvo()
-                                                : _connectVolvo),
-                                      icon: Icon(
-                                        _volvoBusy && _volvoConnected
-                                            ? Icons.hourglass_top_rounded
-                                            : _volvoConnected
-                                            ? Icons.refresh_rounded
-                                            : Icons.link_rounded,
-                                      ),
-                                      label: Text(
-                                        _volvoConnected
-                                            ? 'Update from Volvo'
-                                            : 'Connect Volvo',
-                                      ),
-                                    ),
-                                    if (_volvoConnected)
-                                      TextButton(
-                                        onPressed: _volvoBusy
-                                            ? null
-                                            : _disconnectVolvo,
-                                        child: const Text('Disconnect'),
-                                      ),
-                                    if (_volvoConnected)
-                                      TextButton(
-                                        onPressed: _volvoBusy
-                                            ? null
-                                            : () async {
-                                                final client = _volvoClient;
-                                                if (client == null) return;
-                                                setState(
-                                                  () => _volvoBusy = true,
-                                                );
-                                                final changed =
-                                                    await _chooseVolvoVehicle(
-                                                      client,
-                                                    );
-                                                if (changed && mounted) {
-                                                  await _refreshVolvo(
-                                                    afterSelection: true,
-                                                  );
-                                                }
-                                                if (mounted) {
-                                                  setState(
-                                                    () => _volvoBusy = false,
-                                                  );
-                                                }
-                                              },
-                                        child: const Text('Change car'),
-                                      ),
-                                  ],
-                                ),
-                                if (_selectedVolvoVehicleLabel != null)
-                                  Text(
-                                    'Selected car: $_selectedVolvoVehicleLabel',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall,
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.check_circle_rounded,
+                                    color: Color(0xFF176B49),
                                   ),
-                                if (volvoUpdatedLabel != null)
-                                  Text(
-                                    'Car last updated: $volvoUpdatedLabel',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall,
-                                  ),
-                                if (_phonePairing != null) ...[
-                                  const SizedBox(height: 12),
-                                  Container(
-                                    width: 280,
-                                    padding: const EdgeInsets.all(16),
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .surfaceContainerHighest,
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
                                     child: Column(
-                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
+                                        const Text(
+                                          'Volvo connected',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
                                         Text(
-                                          'Connect with your phone',
+                                          _selectedVolvoVehicleLabel == null
+                                              ? 'Latest odometer: ${_formatKm(plan.currentOdometerKm)}'
+                                              : '${_selectedVolvoVehicleLabel!} · ${_formatKm(plan.currentOdometerKm)}',
                                           style: Theme.of(context)
                                               .textTheme
-                                              .titleMedium
-                                              ?.copyWith(
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        const Text(
-                                          'Scan this code with your phone, sign in to your Volvo ID, then keep this screen open. The car will connect automatically.',
-                                          textAlign: TextAlign.center,
-                                        ),
-                                        const SizedBox(height: 12),
-                                        DecoratedBox(
-                                          decoration: const BoxDecoration(
-                                            color: Colors.white,
-                                          ),
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(8),
-                                            child: QrImageView(
-                                              data: _phonePairing!
-                                                  .authorizationUrl
-                                                  .toString(),
-                                              version: QrVersions.auto,
-                                              size: 220,
-                                              backgroundColor: Colors.white,
-                                              errorCorrectionLevel:
-                                                  QrErrorCorrectLevel.M,
-                                              semanticsLabel:
-                                                  'Volvo sign-in QR code',
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        TextButton(
-                                          onPressed: _cancelPhonePairing,
-                                          child: const Text(
-                                            'Cancel connection',
-                                          ),
+                                              .bodySmall,
                                         ),
                                       ],
                                     ),
                                   ),
-                                ],
-                                if (_volvoRefreshFeedback !=
-                                    _VolvoRefreshFeedback.idle) ...[
-                                  const SizedBox(height: 12),
-                                  Semantics(
-                                    liveRegion: true,
-                                    child: AnimatedSwitcher(
-                                      duration: const Duration(
-                                        milliseconds: 350,
-                                      ),
-                                      child: Container(
-                                        key: ValueKey(_volvoRefreshFeedback),
-                                        width: double.infinity,
-                                        padding: const EdgeInsets.all(14),
-                                        decoration: BoxDecoration(
-                                          color:
-                                              _volvoRefreshFeedback ==
-                                                  _VolvoRefreshFeedback.success
-                                              ? const Color(0xFFE6F5EE)
-                                              : Theme.of(context)
-                                                    .colorScheme
-                                                    .surfaceContainerHighest,
-                                          borderRadius: BorderRadius.circular(
-                                            14,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            if (_volvoRefreshFeedback ==
-                                                _VolvoRefreshFeedback.loading)
-                                              const SizedBox(
-                                                width: 22,
-                                                height: 22,
-                                                child:
-                                                    CircularProgressIndicator(
-                                                      strokeWidth: 2.5,
-                                                    ),
-                                              )
-                                            else
-                                              const Icon(
-                                                Icons.check_circle_rounded,
-                                                color: Color(0xFF176B49),
-                                                size: 24,
-                                              ),
-                                            const SizedBox(width: 12),
-                                            Expanded(
-                                              child: Text(
-                                                _volvoRefreshFeedback ==
-                                                        _VolvoRefreshFeedback
-                                                            .loading
-                                                    ? 'Reading the latest odometer from Volvo…'
-                                                    : _volvoMessage ?? 'Volvo check complete.',
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ] else if (_volvoMessage != null)
-                                  Text(
-                                    _volvoMessage!,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall,
-                                  ),
-                              ],
-                              const SizedBox(height: 18),
-                              Wrap(
-                                spacing: 12,
-                                runSpacing: 12,
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                children: [
-                                  SizedBox(
-                                    width: 250,
-                                    child: TextField(
-                                      key: const Key('quickOdometerField'),
-                                      controller: _odometerController,
-                                      keyboardType:
-                                          const TextInputType.numberWithOptions(
-                                            decimal: true,
-                                          ),
-                                      decoration: const InputDecoration(
-                                        labelText: 'Odometer reading',
-                                        suffixText: 'km',
-                                      ),
-                                      onSubmitted: (_) => _saveOdometer(),
-                                    ),
-                                  ),
-                                  FilledButton.icon(
-                                    key: const Key('saveOdometerButton'),
-                                    onPressed: _savingOdometer
-                                        ? null
-                                        : _saveOdometer,
-                                    icon: const Icon(Icons.check_rounded),
-                                    label: const Text('Save reading'),
-                                  ),
+                                  const SizedBox(width: 8),
+                                  const Text('Show'),
+                                  const Icon(Icons.expand_more_rounded),
                                 ],
                               ),
-                            ],
+                            ),
+                          ),
+                        )
+                      else
+                        Card(
+                          margin: EdgeInsets.zero,
+                          child: Padding(
+                            padding: const EdgeInsets.all(22),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Current odometer',
+                                  style: Theme.of(context).textTheme.titleLarge
+                                      ?.copyWith(fontWeight: FontWeight.w700),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  _volvoConnected
+                                      ? 'The latest reading comes from Volvo. You can also enter one manually.'
+                                      : _volvoEnabled
+                                      ? 'Enter a reading manually, or connect Volvo for automatic updates.'
+                                      : 'Enter a reading manually.',
+                                  style: TextStyle(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                                Chip(
+                                  avatar: Icon(
+                                    _volvoConnected
+                                        ? Icons.sync_rounded
+                                        : Icons.edit_outlined,
+                                    size: 18,
+                                  ),
+                                  label: Text(
+                                    _volvoConnected
+                                        ? 'Volvo connected'
+                                        : 'Manual entry',
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  _volvoConnected
+                                      ? 'The app checks Volvo on a fresh launch or when you tap Update from Volvo. Manual entry stays available below.'
+                                      : _volvoEnabled
+                                      ? 'Connect your Volvo ID for updates when the app starts and on demand.'
+                                      : 'Volvo updates are not available in this version.',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                                if (_volvoEnabled) ...[
+                                  const SizedBox(height: 8),
+                                  Wrap(
+                                    spacing: 8,
+                                    children: [
+                                      TextButton.icon(
+                                        onPressed: _volvoBusy
+                                            ? null
+                                            : (_volvoConnected
+                                                  ? () => _refreshVolvo()
+                                                  : _connectVolvo),
+                                        icon: Icon(
+                                          _volvoBusy && _volvoConnected
+                                              ? Icons.hourglass_top_rounded
+                                              : _volvoConnected
+                                              ? Icons.refresh_rounded
+                                              : Icons.link_rounded,
+                                        ),
+                                        label: Text(
+                                          _volvoConnected
+                                              ? 'Update from Volvo'
+                                              : 'Connect Volvo',
+                                        ),
+                                      ),
+                                      if (_volvoConnected)
+                                        TextButton(
+                                          onPressed: _volvoBusy
+                                              ? null
+                                              : _disconnectVolvo,
+                                          child: const Text('Disconnect'),
+                                        ),
+                                      if (_volvoConnected)
+                                        TextButton(
+                                          onPressed: _volvoBusy
+                                              ? null
+                                              : () async {
+                                                  final client = _volvoClient;
+                                                  if (client == null) return;
+                                                  setState(
+                                                    () => _volvoBusy = true,
+                                                  );
+                                                  final changed =
+                                                      await _chooseVolvoVehicle(
+                                                        client,
+                                                      );
+                                                  if (changed && mounted) {
+                                                    await _refreshVolvo(
+                                                      afterSelection: true,
+                                                    );
+                                                  }
+                                                  if (mounted) {
+                                                    setState(
+                                                      () => _volvoBusy = false,
+                                                    );
+                                                  }
+                                                },
+                                          child: const Text('Change car'),
+                                        ),
+                                      if (_volvoConnected)
+                                        TextButton(
+                                          onPressed: () => setState(() {
+                                            _odometerDetailsExpanded = false;
+                                            if (_volvoRefreshFeedback ==
+                                                _VolvoRefreshFeedback.success) {
+                                              _volvoRefreshFeedback =
+                                                  _VolvoRefreshFeedback.idle;
+                                              _volvoMessage = null;
+                                            }
+                                          }),
+                                          child: const Text('Hide details'),
+                                        ),
+                                    ],
+                                  ),
+                                  if (_selectedVolvoVehicleLabel != null)
+                                    Text(
+                                      'Selected car: $_selectedVolvoVehicleLabel',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall,
+                                    ),
+                                  if (volvoUpdatedLabel != null)
+                                    Text(
+                                      'Car last updated: $volvoUpdatedLabel',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall,
+                                    ),
+                                  if (_phonePairing != null) ...[
+                                    const SizedBox(height: 12),
+                                    Container(
+                                      width: 280,
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .surfaceContainerHighest,
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            'Connect with your phone',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleMedium
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          const Text(
+                                            'Scan this code with your phone, sign in to your Volvo ID, then keep this screen open. The car will connect automatically.',
+                                            textAlign: TextAlign.center,
+                                          ),
+                                          const SizedBox(height: 12),
+                                          DecoratedBox(
+                                            decoration: const BoxDecoration(
+                                              color: Colors.white,
+                                            ),
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(8),
+                                              child: QrImageView(
+                                                data: _phonePairing!
+                                                    .authorizationUrl
+                                                    .toString(),
+                                                version: QrVersions.auto,
+                                                size: 220,
+                                                backgroundColor: Colors.white,
+                                                errorCorrectionLevel:
+                                                    QrErrorCorrectLevel.M,
+                                                semanticsLabel:
+                                                    'Volvo sign-in QR code',
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          TextButton(
+                                            onPressed: _cancelPhonePairing,
+                                            child: const Text(
+                                              'Cancel connection',
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                  if (_volvoRefreshFeedback !=
+                                      _VolvoRefreshFeedback.idle) ...[
+                                    const SizedBox(height: 12),
+                                    Semantics(
+                                      liveRegion: true,
+                                      child: AnimatedSwitcher(
+                                        duration: const Duration(
+                                          milliseconds: 350,
+                                        ),
+                                        child: Container(
+                                          key: ValueKey(_volvoRefreshFeedback),
+                                          width: double.infinity,
+                                          padding: const EdgeInsets.all(14),
+                                          decoration: BoxDecoration(
+                                            color:
+                                                _volvoRefreshFeedback ==
+                                                    _VolvoRefreshFeedback
+                                                        .success
+                                                ? const Color(0xFFE6F5EE)
+                                                : Theme.of(context)
+                                                      .colorScheme
+                                                      .surfaceContainerHighest,
+                                            borderRadius: BorderRadius.circular(
+                                              14,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              if (_volvoRefreshFeedback ==
+                                                  _VolvoRefreshFeedback.loading)
+                                                const SizedBox(
+                                                  width: 22,
+                                                  height: 22,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        strokeWidth: 2.5,
+                                                      ),
+                                                )
+                                              else
+                                                const Icon(
+                                                  Icons.check_circle_rounded,
+                                                  color: Color(0xFF176B49),
+                                                  size: 24,
+                                                ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Text(
+                                                  _volvoRefreshFeedback ==
+                                                          _VolvoRefreshFeedback
+                                                              .loading
+                                                      ? 'Reading the latest odometer from Volvo…'
+                                                      : _volvoMessage ?? 'Volvo check complete.',
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ] else if (_volvoMessage != null)
+                                    Text(
+                                      _volvoMessage!,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall,
+                                    ),
+                                ],
+                                const SizedBox(height: 18),
+                                Wrap(
+                                  spacing: 12,
+                                  runSpacing: 12,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      width: 250,
+                                      child: TextField(
+                                        key: const Key('quickOdometerField'),
+                                        controller: _odometerController,
+                                        keyboardType:
+                                            const TextInputType.numberWithOptions(
+                                              decimal: true,
+                                            ),
+                                        decoration: const InputDecoration(
+                                          labelText: 'Odometer reading',
+                                          suffixText: 'km',
+                                        ),
+                                        onSubmitted: (_) => _saveOdometer(),
+                                      ),
+                                    ),
+                                    FilledButton.icon(
+                                      key: const Key('saveOdometerButton'),
+                                      onPressed: _savingOdometer
+                                          ? null
+                                          : _saveOdometer,
+                                      icon: const Icon(Icons.check_rounded),
+                                      label: const Text('Save reading'),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
                       const SizedBox(height: 18),
                       _BalanceHero(
                         balance: _formatKm(budgets!.totalKm, signed: true),
@@ -1027,7 +1110,9 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                       ),
                       const SizedBox(height: 18),
                       Text(
-                        'Your odometer is entered manually for now; the app does not read the car automatically. Commutes are reserved only on your selected days, and budgets are spread evenly across calendar days.',
+                        _volvoConnected
+                            ? 'Your odometer is updated from the selected Volvo when the app opens and when you request an update. Manual entry remains available. Commutes are reserved only on your selected days, and budgets are spread evenly across calendar days.'
+                            : 'Your odometer is entered manually for now; the app does not read the car automatically. Commutes are reserved only on your selected days, and budgets are spread evenly across calendar days.',
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
