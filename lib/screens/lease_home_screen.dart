@@ -602,9 +602,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
         !_odometerDetailsExpanded &&
         !_volvoBusy &&
         _phonePairing == null &&
-        _volvoRefreshFeedback != _VolvoRefreshFeedback.loading &&
-        (_volvoMessage == null ||
-            _volvoRefreshFeedback == _VolvoRefreshFeedback.success);
+        _volvoRefreshFeedback != _VolvoRefreshFeedback.loading;
 
     return Scaffold(
       appBar: AppBar(
