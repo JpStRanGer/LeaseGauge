@@ -17,6 +17,15 @@ class LeaseFormValues {
   final double commuteDistanceKm;
   final DateTime returnDate;
   final Set<int> commuteWeekdays;
+
+  LeaseFormValues withCurrentOdometer(double reading) => LeaseFormValues(
+    allowedDistanceKm: allowedDistanceKm,
+    startOdometerKm: startOdometerKm,
+    currentOdometerKm: reading,
+    commuteDistanceKm: commuteDistanceKm,
+    returnDate: returnDate,
+    commuteWeekdays: commuteWeekdays,
+  );
 }
 
 abstract interface class LeaseFormStore {

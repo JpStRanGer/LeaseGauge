@@ -1,7 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:leasegauge/data/lease_form_storage.dart';
+import 'package:leasegauge/data/volvo_connection_client.dart';
 import 'package:leasegauge/domain/lease_calculator.dart';
 import 'package:leasegauge/screens/lease_setup_screen.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+enum _DisconnectScope { thisDevice, everywhere }
+
+enum _VolvoRefreshFeedback { idle, loading, success }
 
 class LeaseHomeScreen extends StatefulWidget {
   const LeaseHomeScreen({super.key, required this.storage});
@@ -13,13 +22,98 @@ class LeaseHomeScreen extends StatefulWidget {
 }
 
 class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
+  static const _volvoEnabled = bool.fromEnvironment('LEASEGAUGE_VOLVO_ENABLED');
   LeaseFormValues? _plan;
   bool _loading = true;
   bool _loadFailed = false;
+  bool _savingOdometer = false;
+  bool _volvoBusy = false;
+  bool _volvoConnected = false;
+  _VolvoRefreshFeedback _volvoRefreshFeedback = _VolvoRefreshFeedback.idle;
+  String? _volvoMessage;
+  DateTime? _volvoUpdatedAt;
+  VolvoConnectionClient? _volvoClient;
+  VolvoPairing? _pairing;
+  VolvoPairing? _phonePairing;
+  DateTime? _pairDeadline;
+  Timer? _pairTimer;
+  bool _pairPolling = false;
+  final _odometerController = TextEditingController();
+
+  @override
+  void dispose() {
+    _pairTimer?.cancel();
+    _volvoClient?.close();
+    _odometerController.dispose();
+    super.dispose();
+  }
+
+  void _setPlan(LeaseFormValues plan) {
+    _plan = plan;
+    _odometerController.text =
+        plan.currentOdometerKm == plan.currentOdometerKm.roundToDouble()
+        ? plan.currentOdometerKm.toStringAsFixed(0)
+        : plan.currentOdometerKm.toString();
+  }
+
+  void _showVolvoMessage(String message) {
+    if (!mounted) return;
+    setState(() => _volvoMessage = message);
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 6)),
+    );
+  }
+
+  Future<void> _saveOdometer() async {
+    final plan = _plan;
+    if (plan == null || _savingOdometer) return;
+    final reading = double.tryParse(
+      _odometerController.text.trim().replaceAll(',', '.'),
+    );
+    if (reading == null ||
+        !reading.isFinite ||
+        reading < plan.startOdometerKm ||
+        reading < plan.currentOdometerKm) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Enter a valid reading at least as high as the last saved odometer.',
+          ),
+        ),
+      );
+      return;
+    }
+    if (reading == plan.currentOdometerKm) return;
+    FocusScope.of(context).unfocus();
+    setState(() => _savingOdometer = true);
+    try {
+      final updated = plan.withCurrentOdometer(reading);
+      await widget.storage.save(updated);
+      if (!mounted) return;
+      setState(() => _setPlan(updated));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Odometer saved. Your budget is up to date.'),
+        ),
+      );
+    } on Exception {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not save the reading. Please try again.'),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _savingOdometer = false);
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    if (_volvoEnabled) _volvoClient = VolvoConnectionClient();
     _loadPlan();
   }
 
@@ -28,16 +122,287 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
       final plan = await widget.storage.load();
       if (!mounted) return;
       setState(() {
-        _plan = plan;
+        if (plan != null) _setPlan(plan);
         _loading = false;
         _loadFailed = false;
       });
+      if (_volvoEnabled && plan != null) unawaited(_restoreAndRefreshVolvo());
     } on Exception {
       if (!mounted) return;
       setState(() {
         _loading = false;
         _loadFailed = true;
       });
+    }
+  }
+
+  Future<void> _restoreAndRefreshVolvo() async {
+    try {
+      final paired = await _volvoClient?.isPaired() ?? false;
+      if (!mounted) return;
+      setState(() => _volvoConnected = paired);
+      if (paired) await _refreshVolvo(silent: true);
+    } on Exception {
+      // Manual entry remains usable if secure device storage is unavailable.
+    }
+  }
+
+  Future<void> _refreshVolvo({bool silent = false}) async {
+    final client = _volvoClient;
+    final plan = _plan;
+    if (client == null || plan == null || _volvoBusy) return;
+    setState(() {
+      _volvoBusy = true;
+      if (!silent) {
+        _volvoRefreshFeedback = _VolvoRefreshFeedback.loading;
+        _volvoMessage = null;
+      }
+    });
+    try {
+      final reading = await client.readOdometer();
+      if (!mounted) return;
+      if (reading == null) {
+        setState(() {
+          _volvoConnected = false;
+          _volvoUpdatedAt = null;
+          if (!silent) {
+            _volvoRefreshFeedback = _VolvoRefreshFeedback.idle;
+            _volvoMessage = 'Connect your Volvo to update automatically.';
+          }
+        });
+        return;
+      }
+      final newerReading = reading.kilometers > plan.currentOdometerKm;
+      if (reading.kilometers >= plan.currentOdometerKm) {
+        final updated = plan.withCurrentOdometer(reading.kilometers);
+        await widget.storage.save(updated);
+        if (!mounted) return;
+        setState(() => _setPlan(updated));
+      }
+      setState(() {
+        _volvoConnected = true;
+        _volvoUpdatedAt = reading.vehicleUpdatedAt;
+        if (!silent) {
+          _volvoRefreshFeedback = _VolvoRefreshFeedback.success;
+          _volvoMessage = reading.kilometers < plan.currentOdometerKm
+              ? 'Volvo was checked. Its reading is older, so your saved value was kept.'
+              : newerReading
+              ? 'Updated from Volvo: ${reading.kilometers.toStringAsFixed(0)} km. Your budget is up to date.'
+              : 'Volvo was checked. Your saved reading is already up to date.';
+        }
+      });
+    } on VolvoVehicleSelectionRequired {
+      if (mounted) {
+        setState(() {
+          _volvoConnected = true;
+          _volvoRefreshFeedback = _VolvoRefreshFeedback.idle;
+        });
+        if (!silent) {
+          _showVolvoMessage(
+            'More than one car is linked to this Volvo ID. Vehicle selection is not available yet; enter the odometer manually.',
+          );
+        }
+      }
+    } on Exception {
+      if (mounted && !silent) {
+        setState(() => _volvoRefreshFeedback = _VolvoRefreshFeedback.idle);
+        _showVolvoMessage(
+          'Could not get a new reading. Manual entry still works.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _volvoBusy = false);
+    }
+  }
+
+  Future<void> _connectVolvo() async {
+    final client = _volvoClient;
+    if (client == null || _volvoBusy) return;
+    setState(() {
+      _volvoBusy = true;
+      _volvoMessage = null;
+    });
+    try {
+      final pairing = await client.beginPairing();
+      var launched = false;
+      try {
+        launched = await launchUrl(
+          pairing.browserStartUrl ?? pairing.authorizationUrl,
+          mode: LaunchMode.externalApplication,
+        );
+      } on Exception {
+        // Some parked AAOS systems intentionally have no browser app.
+      }
+      if (!launched) {
+        _startPairingPoll(
+          pairing,
+          message: 'Scan the QR code with your phone to sign in to Volvo.',
+          showPhoneQr: true,
+        );
+        return;
+      }
+      _startPairingPoll(
+        pairing,
+        message:
+            'Complete the Volvo sign-in in your browser, then return here.',
+        showPhoneQr: false,
+      );
+    } on VolvoServiceUnavailable {
+      _showVolvoMessage(
+        'Volvo connection is not available yet. Enter the odometer manually for now.',
+      );
+    } on Exception {
+      _showVolvoMessage(
+        'Could not start Volvo sign-in. Check your connection and try again.',
+      );
+    } finally {
+      if (mounted) setState(() => _volvoBusy = false);
+    }
+  }
+
+  void _startPairingPoll(
+    VolvoPairing pairing, {
+    required String message,
+    required bool showPhoneQr,
+  }) {
+    if (!mounted) return;
+    _pairTimer?.cancel();
+    setState(() {
+      _pairing = pairing;
+      _phonePairing = showPhoneQr ? pairing : null;
+      _pairDeadline = DateTime.now().add(const Duration(minutes: 10));
+      _volvoMessage = message;
+    });
+    _pairTimer = Timer.periodic(
+      const Duration(seconds: 3),
+      (_) => unawaited(_pollVolvoPairing()),
+    );
+  }
+
+  void _cancelPhonePairing() {
+    _pairTimer?.cancel();
+    setState(() {
+      _pairing = null;
+      _phonePairing = null;
+      _pairDeadline = null;
+      _volvoMessage =
+          'Volvo connection cancelled. Manual entry is still available.';
+    });
+  }
+
+  Future<void> _pollVolvoPairing() async {
+    final pairing = _pairing;
+    final client = _volvoClient;
+    if (pairing == null || client == null || _pairPolling) return;
+    if (_pairDeadline != null && DateTime.now().isAfter(_pairDeadline!)) {
+      _pairTimer?.cancel();
+      _pairing = null;
+      _phonePairing = null;
+      _showVolvoMessage('Connection timed out. Please try again.');
+      return;
+    }
+    _pairPolling = true;
+    try {
+      if (await client.completePairing(pairing)) {
+        _pairTimer?.cancel();
+        _pairing = null;
+        _phonePairing = null;
+        if (mounted) {
+          setState(() {
+            _volvoConnected = true;
+            _volvoMessage = 'Volvo connected.';
+          });
+          await _refreshVolvo();
+        }
+      }
+    } on Exception {
+      _pairTimer?.cancel();
+      _pairing = null;
+      _phonePairing = null;
+      _showVolvoMessage('Connection stopped. You can try again.');
+    } finally {
+      _pairPolling = false;
+    }
+  }
+
+  Future<void> _disconnectVolvo() async {
+    final client = _volvoClient;
+    if (client == null || _volvoBusy) return;
+    final scope = await showDialog<_DisconnectScope>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Disconnect Volvo'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: const Text('This device only'),
+              subtitle: const Text('Other devices stay connected.'),
+              onTap: () =>
+                  Navigator.pop(dialogContext, _DisconnectScope.thisDevice),
+            ),
+            ListTile(
+              title: const Text('Everywhere'),
+              subtitle: const Text(
+                'Disconnect the car, phone and other devices.',
+              ),
+              onTap: () =>
+                  Navigator.pop(dialogContext, _DisconnectScope.everywhere),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+    if (scope == null || !mounted) return;
+    if (scope == _DisconnectScope.everywhere) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Disconnect on every device?'),
+          content: const Text(
+            'Volvo updates will stop on this phone, the car and every other connected device. Each device will need to connect again. Saved lease plans and mileage remain on each device.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Disconnect everywhere'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+    }
+    setState(() => _volvoBusy = true);
+    try {
+      if (scope == _DisconnectScope.thisDevice) {
+        await client.disconnectThisDevice();
+      } else {
+        await client.disconnectEverywhere();
+      }
+      if (mounted) {
+        setState(() {
+          _volvoConnected = false;
+          _volvoUpdatedAt = null;
+          _volvoRefreshFeedback = _VolvoRefreshFeedback.idle;
+          _volvoMessage = scope == _DisconnectScope.thisDevice
+              ? 'Volvo disconnected on this device. Other devices stay connected.'
+              : 'Volvo disconnected on every device. Manual entry is still available.';
+        });
+      }
+    } on Exception {
+      _showVolvoMessage('Could not disconnect. Please try again.');
+    } finally {
+      if (mounted) setState(() => _volvoBusy = false);
     }
   }
 
@@ -50,7 +415,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
     );
     if (!mounted || savedPlan == null) return;
     setState(() {
-      _plan = savedPlan;
+      _setPlan(savedPlan);
       _loadFailed = false;
     });
   }
@@ -77,6 +442,11 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
   Widget build(BuildContext context) {
     final plan = _plan;
     final today = DateUtils.dateOnly(DateTime.now());
+    final volvoUpdatedAt = _volvoUpdatedAt?.toLocal();
+    final localizations = MaterialLocalizations.of(context);
+    final volvoUpdatedLabel = volvoUpdatedAt == null
+        ? null
+        : '${localizations.formatMediumDate(volvoUpdatedAt)}, ${localizations.formatTimeOfDay(TimeOfDay.fromDateTime(volvoUpdatedAt), alwaysUse24HourFormat: true)}';
     final calculation = plan == null
         ? null
         : calculateLeaseForPeriod(
@@ -153,6 +523,257 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
+                      Card(
+                        margin: EdgeInsets.zero,
+                        child: Padding(
+                          padding: const EdgeInsets.all(22),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Current odometer',
+                                style: Theme.of(context).textTheme.titleLarge
+                                    ?.copyWith(fontWeight: FontWeight.w700),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                _volvoConnected
+                                    ? 'The latest reading comes from Volvo. You can also enter one manually.'
+                                    : _volvoEnabled
+                                    ? 'Enter a reading manually, or connect Volvo for automatic updates.'
+                                    : 'Enter a reading manually.',
+                                style: TextStyle(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              Chip(
+                                avatar: Icon(
+                                  _volvoConnected
+                                      ? Icons.sync_rounded
+                                      : Icons.edit_outlined,
+                                  size: 18,
+                                ),
+                                label: Text(
+                                  _volvoConnected
+                                      ? 'Volvo connected'
+                                      : 'Manual entry',
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                _volvoConnected
+                                    ? 'The app checks Volvo on a fresh launch or when you tap Update from Volvo. Manual entry stays available below.'
+                                    : _volvoEnabled
+                                    ? 'Connect your Volvo ID for updates when the app starts and on demand.'
+                                    : 'Volvo updates are not available in this version.',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                              if (_volvoEnabled) ...[
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 8,
+                                  children: [
+                                    TextButton.icon(
+                                      onPressed: _volvoBusy
+                                          ? null
+                                          : (_volvoConnected
+                                                ? () => _refreshVolvo()
+                                                : _connectVolvo),
+                                      icon: Icon(
+                                        _volvoBusy && _volvoConnected
+                                            ? Icons.hourglass_top_rounded
+                                            : _volvoConnected
+                                            ? Icons.refresh_rounded
+                                            : Icons.link_rounded,
+                                      ),
+                                      label: Text(
+                                        _volvoConnected
+                                            ? 'Update from Volvo'
+                                            : 'Connect Volvo',
+                                      ),
+                                    ),
+                                    if (_volvoConnected)
+                                      TextButton(
+                                        onPressed: _volvoBusy
+                                            ? null
+                                            : _disconnectVolvo,
+                                        child: const Text('Disconnect'),
+                                      ),
+                                  ],
+                                ),
+                                if (volvoUpdatedLabel != null)
+                                  Text(
+                                    'Car last updated: $volvoUpdatedLabel',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall,
+                                  ),
+                                if (_phonePairing != null) ...[
+                                  const SizedBox(height: 12),
+                                  Container(
+                                    width: 280,
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .surfaceContainerHighest,
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          'Connect with your phone',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        const Text(
+                                          'Scan this code with your phone, sign in to your Volvo ID, then keep this screen open. The car will connect automatically.',
+                                          textAlign: TextAlign.center,
+                                        ),
+                                        const SizedBox(height: 12),
+                                        DecoratedBox(
+                                          decoration: const BoxDecoration(
+                                            color: Colors.white,
+                                          ),
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(8),
+                                            child: QrImageView(
+                                              data: _phonePairing!
+                                                  .authorizationUrl
+                                                  .toString(),
+                                              version: QrVersions.auto,
+                                              size: 220,
+                                              backgroundColor: Colors.white,
+                                              errorCorrectionLevel:
+                                                  QrErrorCorrectLevel.M,
+                                              semanticsLabel:
+                                                  'Volvo sign-in QR code',
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        TextButton(
+                                          onPressed: _cancelPhonePairing,
+                                          child: const Text(
+                                            'Cancel connection',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                                if (_volvoRefreshFeedback !=
+                                    _VolvoRefreshFeedback.idle) ...[
+                                  const SizedBox(height: 12),
+                                  Semantics(
+                                    liveRegion: true,
+                                    child: AnimatedSwitcher(
+                                      duration: const Duration(
+                                        milliseconds: 350,
+                                      ),
+                                      child: Container(
+                                        key: ValueKey(_volvoRefreshFeedback),
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.all(14),
+                                        decoration: BoxDecoration(
+                                          color:
+                                              _volvoRefreshFeedback ==
+                                                  _VolvoRefreshFeedback.success
+                                              ? const Color(0xFFE6F5EE)
+                                              : Theme.of(context)
+                                                    .colorScheme
+                                                    .surfaceContainerHighest,
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            if (_volvoRefreshFeedback ==
+                                                _VolvoRefreshFeedback.loading)
+                                              const SizedBox(
+                                                width: 22,
+                                                height: 22,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2.5,
+                                                    ),
+                                              )
+                                            else
+                                              const Icon(
+                                                Icons.check_circle_rounded,
+                                                color: Color(0xFF176B49),
+                                                size: 24,
+                                              ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Text(
+                                                _volvoRefreshFeedback ==
+                                                        _VolvoRefreshFeedback
+                                                            .loading
+                                                    ? 'Reading the latest odometer from Volvo…'
+                                                    : _volvoMessage ?? 'Volvo check complete.',
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ] else if (_volvoMessage != null)
+                                  Text(
+                                    _volvoMessage!,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall,
+                                  ),
+                              ],
+                              const SizedBox(height: 18),
+                              Wrap(
+                                spacing: 12,
+                                runSpacing: 12,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  SizedBox(
+                                    width: 250,
+                                    child: TextField(
+                                      key: const Key('quickOdometerField'),
+                                      controller: _odometerController,
+                                      keyboardType:
+                                          const TextInputType.numberWithOptions(
+                                            decimal: true,
+                                          ),
+                                      decoration: const InputDecoration(
+                                        labelText: 'Odometer reading',
+                                        suffixText: 'km',
+                                      ),
+                                      onSubmitted: (_) => _saveOdometer(),
+                                    ),
+                                  ),
+                                  FilledButton.icon(
+                                    key: const Key('saveOdometerButton'),
+                                    onPressed: _savingOdometer
+                                        ? null
+                                        : _saveOdometer,
+                                    icon: const Icon(Icons.check_rounded),
+                                    label: const Text('Save reading'),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
                       _BalanceHero(
                         balance: _formatKm(budgets!.totalKm, signed: true),
                         onTrack: budgets.totalKm >= 0,

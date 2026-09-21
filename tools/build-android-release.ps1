@@ -9,7 +9,9 @@ param(
     [string]$FlutterPath = 'C:\dev\flutter\bin\flutter.bat',
 
     [ValidateRange(1, 2100000000)]
-    [int]$BuildNumber
+    [int]$BuildNumber,
+
+    [switch]$EnableVolvoTesting
 )
 
 $ErrorActionPreference = 'Stop'
@@ -78,6 +80,10 @@ try {
     $buildArguments = @('build', 'appbundle', '--release')
     if ($PSBoundParameters.ContainsKey('BuildNumber')) {
         $buildArguments += "--build-number=$BuildNumber"
+    }
+    if ($EnableVolvoTesting) {
+        Write-Host 'Including Volvo connection for the internal Play test build.'
+        $buildArguments += '--dart-define=LEASEGAUGE_VOLVO_ENABLED=true'
     }
     & $FlutterPath @buildArguments
     if ($LASTEXITCODE -ne 0) { throw 'Release build failed. Do not upload any older bundle.' }

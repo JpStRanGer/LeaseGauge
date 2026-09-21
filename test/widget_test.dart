@@ -18,6 +18,41 @@ class _MemoryLeaseFormStore implements LeaseFormStore {
 }
 
 void main() {
+  testWidgets('quick odometer entry saves and updates the home budget', (
+    WidgetTester tester,
+  ) async {
+    final store = _MemoryLeaseFormStore(
+      values: LeaseFormValues(
+        allowedDistanceKm: 1000,
+        startOdometerKm: 0,
+        currentOdometerKm: 100,
+        commuteDistanceKm: 0,
+        returnDate: DateTime.now().add(const Duration(days: 30)),
+        commuteWeekdays: const {},
+      ),
+    );
+    await tester.pumpWidget(LeaseGaugeApp(storage: store));
+    await tester.pumpAndSettle();
+    expect(find.text('+900 km'), findsOneWidget);
+    expect(find.text('Manual entry'), findsOneWidget);
+    expect(
+      find.text('Volvo updates are not available in this version.'),
+      findsOneWidget,
+    );
+
+    await tester.enterText(find.byKey(const Key('quickOdometerField')), '250');
+    await tester.tap(find.byKey(const Key('saveOdometerButton')));
+    await tester.pumpAndSettle();
+    expect(store.values!.currentOdometerKm, 250);
+    expect(find.text('+750 km'), findsOneWidget);
+
+    await tester.enterText(find.byKey(const Key('quickOdometerField')), '200');
+    await tester.tap(find.byKey(const Key('saveOdometerButton')));
+    await tester.pump();
+    expect(store.values!.currentOdometerKm, 250);
+    expect(find.text('+750 km'), findsOneWidget);
+  });
+
   testWidgets('home is an overview and opens a separate setup page', (
     WidgetTester tester,
   ) async {
@@ -127,7 +162,16 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('+900 km'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('No commute days'), 200);
+    await tester.scrollUntilVisible(
+      find.text('No commute days'),
+      200,
+      scrollable: find
+          .descendant(
+            of: find.byType(ListView),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
     expect(find.text('No commute days'), findsOneWidget);
   });
 }

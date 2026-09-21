@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:leasegauge/data/lease_form_storage.dart';
 import 'package:leasegauge/domain/lease_calculator.dart';
+import 'package:leasegauge/screens/commute_map_screen.dart';
 
 class LeaseSetupScreen extends StatefulWidget {
   const LeaseSetupScreen({
@@ -87,6 +88,16 @@ class _LeaseSetupScreenState extends State<LeaseSetupScreen> {
     if (selectedDate != null && mounted) {
       setState(() => _returnDate = selectedDate);
     }
+  }
+
+  Future<void> _chooseCommuteOnMap() async {
+    final distance = await Navigator.of(
+      context,
+    ).push<double>(MaterialPageRoute(builder: (_) => const CommuteMapScreen()));
+    if (!mounted || distance == null) return;
+    setState(
+      () => _commuteDistanceController.text = distance.toStringAsFixed(1),
+    );
   }
 
   void _showMessage(String message) {
@@ -252,6 +263,20 @@ class _LeaseSetupScreenState extends State<LeaseSetupScreen> {
                     label: 'Round trip per commute day',
                     hint: 'For example: 40',
                     helper: 'Home to work and back',
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    key: const Key('chooseCommuteMapButton'),
+                    onPressed: _chooseCommuteOnMap,
+                    icon: const Icon(Icons.map_outlined),
+                    label: const Text('Choose route on map'),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Map routing is a local test feature. You can always adjust the distance manually.',
+                    style: textTheme.bodySmall?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(height: 18),
                   Text('Days you drive to work', style: textTheme.titleSmall),
