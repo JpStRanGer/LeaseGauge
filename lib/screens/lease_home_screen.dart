@@ -29,6 +29,8 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
   bool _savingOdometer = false;
   bool _volvoBusy = false;
   bool _volvoConnected = false;
+  bool _latestOdometerIsFromVolvo = false;
+  bool _manualOdometerEditing = false;
   bool _odometerDetailsExpanded = false;
   _VolvoRefreshFeedback _volvoRefreshFeedback = _VolvoRefreshFeedback.idle;
   String? _volvoMessage;
@@ -94,7 +96,11 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
       final updated = plan.withCurrentOdometer(reading);
       await widget.storage.save(updated);
       if (!mounted) return;
-      setState(() => _setPlan(updated));
+      setState(() {
+        _setPlan(updated);
+        _latestOdometerIsFromVolvo = false;
+        _manualOdometerEditing = true;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Odometer saved. Your budget is up to date.'),
@@ -182,6 +188,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
       final lowerReading = reading.kilometers < plan.currentOdometerKm;
       final newerReading = reading.kilometers > plan.currentOdometerKm;
       var replacedForSelectedCar = false;
+      var currentReadingIsFromVolvo = false;
       if (lowerReading && afterSelection) {
         if (reading.kilometers < plan.startOdometerKm) {
           if (mounted && !silent) {
@@ -195,17 +202,21 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
           if (!mounted) return;
           setState(() => _setPlan(updated));
           replacedForSelectedCar = true;
+          currentReadingIsFromVolvo = true;
         }
       } else if (reading.kilometers >= plan.currentOdometerKm) {
         final updated = plan.withCurrentOdometer(reading.kilometers);
         await widget.storage.save(updated);
         if (!mounted) return;
         setState(() => _setPlan(updated));
+        currentReadingIsFromVolvo = true;
       }
       setState(() {
         _volvoConnected = true;
         _volvoUpdatedAt = reading.vehicleUpdatedAt;
         _selectedVolvoVehicleLabel = reading.vehicleLabel;
+        _latestOdometerIsFromVolvo = currentReadingIsFromVolvo;
+        _manualOdometerEditing = false;
         if (!silent) {
           _volvoRefreshFeedback = _VolvoRefreshFeedback.success;
           _volvoMessage = replacedForSelectedCar
@@ -701,6 +712,8 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                         Text(
                                           !_volvoConnected
                                               ? 'Latest reading: ${_formatKm(plan.currentOdometerKm)}'
+                                              : !_latestOdometerIsFromVolvo
+                                              ? 'Manual reading: ${_formatKm(plan.currentOdometerKm)}'
                                               : _selectedVolvoVehicleLabel ==
                                                     null
                                               ? 'Latest odometer: ${_formatKm(plan.currentOdometerKm)}'
@@ -1009,37 +1022,101 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                     ),
                                 ],
                                 const SizedBox(height: 18),
-                                Wrap(
-                                  spacing: 12,
-                                  runSpacing: 12,
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  children: [
-                                    SizedBox(
-                                      width: 250,
-                                      child: TextField(
-                                        key: const Key('quickOdometerField'),
-                                        controller: _odometerController,
-                                        keyboardType:
-                                            const TextInputType.numberWithOptions(
-                                              decimal: true,
-                                            ),
-                                        decoration: const InputDecoration(
-                                          labelText: 'Odometer reading',
-                                          suffixText: 'km',
+                                if (_volvoConnected &&
+                                    _latestOdometerIsFromVolvo &&
+                                    !_manualOdometerEditing) ...[
+                                  SizedBox(
+                                    width: 320,
+                                    child: TextField(
+                                      controller: _odometerController,
+                                      readOnly: true,
+                                      enableInteractiveSelection: false,
+                                      decoration: InputDecoration(
+                                        labelText:
+                                            'Automatic reading from Volvo',
+                                        helperText: _volvoUpdatedAt == null
+                                            ? 'Retrieved from your selected Volvo.'
+                                            : 'Retrieved from Volvo · $volvoUpdatedLabel',
+                                        prefixIcon: const Icon(
+                                          Icons.cloud_done_rounded,
                                         ),
-                                        onSubmitted: (_) => _saveOdometer(),
+                                        suffixText: 'km',
+                                        filled: true,
                                       ),
                                     ),
-                                    FilledButton.icon(
-                                      key: const Key('saveOdometerButton'),
-                                      onPressed: _savingOdometer
-                                          ? null
-                                          : _saveOdometer,
-                                      icon: const Icon(Icons.check_rounded),
-                                      label: const Text('Save reading'),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  TextButton.icon(
+                                    key: const Key('enterManualOdometerButton'),
+                                    onPressed: () => setState(
+                                      () => _manualOdometerEditing = true,
                                     ),
-                                  ],
-                                ),
+                                    icon: const Icon(Icons.edit_outlined),
+                                    label: const Text('Enter a manual reading'),
+                                  ),
+                                  const Padding(
+                                    padding: EdgeInsets.only(left: 12),
+                                    child: Text(
+                                      'Manual entry changes LeaseGauge only; it does not change Volvo.',
+                                    ),
+                                  ),
+                                ] else ...[
+                                  Wrap(
+                                    spacing: 12,
+                                    runSpacing: 12,
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
+                                    children: [
+                                      SizedBox(
+                                        width: 250,
+                                        child: TextField(
+                                          key: const Key('quickOdometerField'),
+                                          controller: _odometerController,
+                                          keyboardType:
+                                              const TextInputType.numberWithOptions(
+                                                decimal: true,
+                                              ),
+                                          decoration: InputDecoration(
+                                            labelText: _volvoConnected
+                                                ? 'Manual odometer reading'
+                                                : 'Odometer reading',
+                                            helperText: _volvoConnected
+                                                ? 'This changes LeaseGauge only; it does not change Volvo.'
+                                                : null,
+                                            suffixText: 'km',
+                                          ),
+                                          onSubmitted: (_) => _saveOdometer(),
+                                        ),
+                                      ),
+                                      FilledButton.icon(
+                                        key: const Key('saveOdometerButton'),
+                                        onPressed: _savingOdometer
+                                            ? null
+                                            : _saveOdometer,
+                                        icon: const Icon(Icons.check_rounded),
+                                        label: Text(
+                                          _volvoConnected
+                                              ? 'Save manual reading'
+                                              : 'Save reading',
+                                        ),
+                                      ),
+                                      if (_volvoConnected &&
+                                          _manualOdometerEditing)
+                                        TextButton(
+                                          onPressed: () {
+                                            FocusScope.of(context).unfocus();
+                                            setState(() {
+                                              _manualOdometerEditing = false;
+                                              _setPlan(plan);
+                                            });
+                                          },
+                                          child: const Text(
+                                            'Cancel manual entry',
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
                               ],
                             ),
                           ),
