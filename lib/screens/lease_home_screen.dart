@@ -32,6 +32,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
   _VolvoRefreshFeedback _volvoRefreshFeedback = _VolvoRefreshFeedback.idle;
   String? _volvoMessage;
   DateTime? _volvoUpdatedAt;
+  String? _selectedVolvoVehicleLabel;
   VolvoConnectionClient? _volvoClient;
   VolvoPairing? _pairing;
   VolvoPairing? _phonePairing;
@@ -147,10 +148,15 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
     }
   }
 
-  Future<void> _refreshVolvo({bool silent = false}) async {
+  Future<void> _refreshVolvo({
+    bool silent = false,
+    bool afterSelection = false,
+  }) async {
     final client = _volvoClient;
     final plan = _plan;
-    if (client == null || plan == null || _volvoBusy) return;
+    if (client == null || plan == null || (_volvoBusy && !afterSelection)) {
+      return;
+    }
     setState(() {
       _volvoBusy = true;
       if (!silent) {
@@ -172,8 +178,24 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
         });
         return;
       }
+      final lowerReading = reading.kilometers < plan.currentOdometerKm;
       final newerReading = reading.kilometers > plan.currentOdometerKm;
-      if (reading.kilometers >= plan.currentOdometerKm) {
+      var replacedForSelectedCar = false;
+      if (lowerReading && afterSelection) {
+        if (reading.kilometers < plan.startOdometerKm) {
+          if (mounted && !silent) {
+            _showVolvoMessage(
+              'This car has a lower odometer than the start of this lease. Edit the plan before using it.',
+            );
+          }
+        } else if (await _confirmLowerVehicleReading(reading, plan)) {
+          final updated = plan.withCurrentOdometer(reading.kilometers);
+          await widget.storage.save(updated);
+          if (!mounted) return;
+          setState(() => _setPlan(updated));
+          replacedForSelectedCar = true;
+        }
+      } else if (reading.kilometers >= plan.currentOdometerKm) {
         final updated = plan.withCurrentOdometer(reading.kilometers);
         await widget.storage.save(updated);
         if (!mounted) return;
@@ -182,10 +204,15 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
       setState(() {
         _volvoConnected = true;
         _volvoUpdatedAt = reading.vehicleUpdatedAt;
+        _selectedVolvoVehicleLabel = reading.vehicleLabel;
         if (!silent) {
           _volvoRefreshFeedback = _VolvoRefreshFeedback.success;
-          _volvoMessage = reading.kilometers < plan.currentOdometerKm
-              ? 'Volvo was checked. Its reading is older, so your saved value was kept.'
+          _volvoMessage = replacedForSelectedCar
+              ? 'Car changed. The new car\'s odometer has replaced the previous reading.'
+              : lowerReading
+              ? afterSelection
+                    ? 'Car changed, but you kept the previous odometer reading.'
+                    : 'Volvo was checked. Its reading is older, so your saved value was kept.'
               : newerReading
               ? 'Updated from Volvo: ${reading.kilometers.toStringAsFixed(0)} km. Your budget is up to date.'
               : 'Volvo was checked. Your saved reading is already up to date.';
@@ -197,9 +224,12 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
           _volvoConnected = true;
           _volvoRefreshFeedback = _VolvoRefreshFeedback.idle;
         });
-        if (!silent) {
+        final selected = await _chooseVolvoVehicle(client);
+        if (selected && mounted) {
+          await _refreshVolvo(silent: silent, afterSelection: true);
+        } else if (mounted && !silent) {
           _showVolvoMessage(
-            'More than one car is linked to this Volvo ID. Vehicle selection is not available yet; enter the odometer manually.',
+            'Choose the leased car before updating from Volvo. Manual entry remains available.',
           );
         }
       }
@@ -212,6 +242,90 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
       }
     } finally {
       if (mounted) setState(() => _volvoBusy = false);
+    }
+  }
+
+  Future<bool> _confirmLowerVehicleReading(
+    VolvoOdometer reading,
+    LeaseFormValues plan,
+  ) async {
+    if (!mounted) return false;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Use the lower reading?'),
+        content: Text(
+          '${reading.vehicleLabel ?? 'The selected car'} reports '
+          '${reading.kilometers.toStringAsFixed(0)} km. Your current plan '
+          'uses ${plan.currentOdometerKm.toStringAsFixed(0)} km.\n\n'
+          'This is expected when you deliberately switch to a different car. '
+          'Use the lower reading only if this lease plan belongs to that car.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Keep current reading'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Use new car reading'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
+  Future<bool> _chooseVolvoVehicle(VolvoConnectionClient client) async {
+    try {
+      final available = await client.readVehicles();
+      if (!mounted) return false;
+      if (available.vehicles.isEmpty) {
+        _showVolvoMessage('No Volvo vehicles are available for this account.');
+        return false;
+      }
+      final vehicle = await showDialog<VolvoVehicle>(
+        context: context,
+        builder: (context) => SimpleDialog(
+          title: const Text('Choose your leased car'),
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(24, 0, 24, 12),
+              child: Text(
+                'More than one car is linked to this Volvo ID. LeaseGauge will only read the odometer from the car you choose on this device.',
+              ),
+            ),
+            // Options are supplied only by the authenticated server. The
+            // server validates the chosen id against Volvo before saving it.
+            for (final vehicle in available.vehicles)
+              SimpleDialogOption(
+                onPressed: () => Navigator.of(context).pop(vehicle),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Text(vehicle.label),
+                ),
+              ),
+            SimpleDialogOption(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Text('Cancel'),
+              ),
+            ),
+          ],
+        ),
+      );
+      if (vehicle == null) return false;
+      await client.selectVehicle(vehicle.id);
+      if (mounted) setState(() => _selectedVolvoVehicleLabel = vehicle.label);
+      return true;
+    } on Exception {
+      if (mounted) {
+        _showVolvoMessage(
+          'Could not load your Volvo vehicles. Please try again.',
+        );
+      }
+      return false;
     }
   }
 
@@ -602,8 +716,42 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                             : _disconnectVolvo,
                                         child: const Text('Disconnect'),
                                       ),
+                                    if (_volvoConnected)
+                                      TextButton(
+                                        onPressed: _volvoBusy
+                                            ? null
+                                            : () async {
+                                                final client = _volvoClient;
+                                                if (client == null) return;
+                                                setState(
+                                                  () => _volvoBusy = true,
+                                                );
+                                                final changed =
+                                                    await _chooseVolvoVehicle(
+                                                      client,
+                                                    );
+                                                if (changed && mounted) {
+                                                  await _refreshVolvo(
+                                                    afterSelection: true,
+                                                  );
+                                                }
+                                                if (mounted) {
+                                                  setState(
+                                                    () => _volvoBusy = false,
+                                                  );
+                                                }
+                                              },
+                                        child: const Text('Change car'),
+                                      ),
                                   ],
                                 ),
+                                if (_selectedVolvoVehicleLabel != null)
+                                  Text(
+                                    'Selected car: $_selectedVolvoVehicleLabel',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall,
+                                  ),
                                 if (volvoUpdatedLabel != null)
                                   Text(
                                     'Car last updated: $volvoUpdatedLabel',

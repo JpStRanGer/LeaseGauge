@@ -140,6 +140,78 @@ void main() {
     client.close();
   });
 
+  test(
+    'lists and selects a Volvo vehicle using the device credential',
+    () async {
+      final tokens = MemoryTokenStore()..value = 'device-token';
+      final paths = <String>[];
+      final client = VolvoConnectionClient(
+        tokenStore: tokens,
+        httpClient: MockClient((request) async {
+          paths.add(request.url.path);
+          expect(request.headers['Authorization'], 'Bearer device-token');
+          if (request.url.path == '/leasegauge/api/vehicles') {
+            return http.Response(
+              jsonEncode({
+                'vehicles': [
+                  {'id': 'vin-1', 'label': 'Volvo ending 111111'},
+                  {'id': 'vin-2', 'label': 'Volvo ending 222222'},
+                ],
+                'selected_vehicle_id': null,
+              }),
+              200,
+            );
+          }
+          expect(request.method, 'POST');
+          expect(jsonDecode(request.body), {'vehicle_id': 'vin-2'});
+          return http.Response(
+            jsonEncode({'selected_vehicle_id': 'vin-2'}),
+            200,
+          );
+        }),
+      );
+
+      final available = await client.readVehicles();
+      expect(available.vehicles.map((vehicle) => vehicle.label), [
+        'Volvo ending 111111',
+        'Volvo ending 222222',
+      ]);
+      expect(available.selectedVehicleId, isNull);
+      await client.selectVehicle('vin-2');
+      expect(paths, [
+        '/leasegauge/api/vehicles',
+        '/leasegauge/api/vehicle/select',
+      ]);
+      client.close();
+    },
+  );
+
+  test(
+    'debug demo can exercise the multiple-car flow without Volvo access',
+    () async {
+      final client = VolvoConnectionClient(
+        tokenStore: MemoryTokenStore(),
+        demoMultipleVehicles: true,
+      );
+
+      expect(await client.isPaired(), isTrue);
+      expect(
+        client.readOdometer(),
+        throwsA(isA<VolvoVehicleSelectionRequired>()),
+      );
+      final vehicles = await client.readVehicles();
+      expect(vehicles.vehicles, hasLength(2));
+      await client.selectVehicle('demo-xc40');
+      expect(
+        (await client.readOdometer())?.vehicleLabel,
+        'Volvo XC40 · demo car',
+      );
+      await client.disconnectThisDevice();
+      expect(await client.isPaired(), isFalse);
+      client.close();
+    },
+  );
+
   test('unconfigured server reports a specific unavailable error', () async {
     final client = VolvoConnectionClient(
       tokenStore: MemoryTokenStore(),

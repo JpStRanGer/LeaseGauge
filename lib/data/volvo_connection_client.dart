@@ -46,10 +46,26 @@ class VolvoOdometer {
   const VolvoOdometer({
     required this.kilometers,
     required this.vehicleUpdatedAt,
+    this.vehicleLabel,
   });
 
   final double kilometers;
   final DateTime vehicleUpdatedAt;
+  final String? vehicleLabel;
+}
+
+class VolvoVehicle {
+  const VolvoVehicle({required this.id, required this.label});
+
+  final String id;
+  final String label;
+}
+
+class VolvoVehicles {
+  const VolvoVehicles({required this.vehicles, this.selectedVehicleId});
+
+  final List<VolvoVehicle> vehicles;
+  final String? selectedVehicleId;
 }
 
 class VolvoVehicleSelectionRequired implements Exception {
@@ -65,6 +81,9 @@ class VolvoConnectionClient {
     http.Client? httpClient,
     DeviceTokenStore? tokenStore,
     Uri? baseUrl,
+    this.demoMultipleVehicles = const bool.fromEnvironment(
+      'LEASEGAUGE_DEMO_MULTIPLE_VOLVOS',
+    ),
   }) : _http = httpClient ?? http.Client(),
        _ownsHttp = httpClient == null,
        _tokens = tokenStore ?? const SecureDeviceTokenStore(),
@@ -74,6 +93,14 @@ class VolvoConnectionClient {
   final bool _ownsHttp;
   final DeviceTokenStore _tokens;
   final Uri _baseUrl;
+  final bool demoMultipleVehicles;
+  String? _demoSelectedVehicleId;
+  bool _demoConnected = true;
+
+  static const _demoVehicles = [
+    VolvoVehicle(id: 'demo-ex30', label: 'Volvo EX30 · demo car'),
+    VolvoVehicle(id: 'demo-xc40', label: 'Volvo XC40 · demo car'),
+  ];
 
   Uri _endpoint(String path) => _baseUrl.resolve(path);
 
@@ -81,7 +108,9 @@ class VolvoConnectionClient {
     if (_ownsHttp) _http.close();
   }
 
-  Future<bool> isPaired() async => (await _tokens.read()) != null;
+  Future<bool> isPaired() async =>
+      (demoMultipleVehicles && _demoConnected) ||
+      (await _tokens.read()) != null;
 
   Future<VolvoPairing> beginPairing() async {
     final response = await _http.post(_endpoint('/leasegauge/api/pair/start'));
@@ -146,6 +175,18 @@ class VolvoConnectionClient {
   }
 
   Future<VolvoOdometer?> readOdometer() async {
+    if (demoMultipleVehicles) {
+      if (!_demoConnected) return null;
+      if (_demoSelectedVehicleId == null) {
+        throw const VolvoVehicleSelectionRequired();
+      }
+      final ex30 = _demoSelectedVehicleId == 'demo-ex30';
+      return VolvoOdometer(
+        kilometers: ex30 ? 16420 : 23175,
+        vehicleUpdatedAt: DateTime.now().toUtc(),
+        vehicleLabel: ex30 ? _demoVehicles[0].label : _demoVehicles[1].label,
+      );
+    }
     final token = await _tokens.read();
     if (token == null) return null;
     final response = await _http.get(
@@ -180,14 +221,101 @@ class VolvoConnectionClient {
         updatedAt == null) {
       throw const FormatException('Invalid odometer response.');
     }
-    return VolvoOdometer(kilometers: kilometers, vehicleUpdatedAt: updatedAt);
+    final label = data['vehicle_label'];
+    if (label != null && label is! String) {
+      throw const FormatException('Invalid vehicle label response.');
+    }
+    return VolvoOdometer(
+      kilometers: kilometers,
+      vehicleUpdatedAt: updatedAt,
+      vehicleLabel: label as String?,
+    );
   }
 
-  Future<void> disconnectThisDevice() =>
-      _disconnect('/leasegauge/api/disconnect-device');
+  Future<VolvoVehicles> readVehicles() async {
+    if (demoMultipleVehicles) {
+      return VolvoVehicles(
+        vehicles: _demoVehicles,
+        selectedVehicleId: _demoSelectedVehicleId,
+      );
+    }
+    final token = await _tokens.read();
+    if (token == null) return const VolvoVehicles(vehicles: []);
+    final response = await _http.get(
+      _endpoint('/leasegauge/api/vehicles'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode == 401) {
+      await _tokens.clear();
+      return const VolvoVehicles(vehicles: []);
+    }
+    if (response.statusCode != 200) {
+      throw StateError('The vehicle list could not be retrieved.');
+    }
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final rawVehicles = data['vehicles'];
+    if (rawVehicles is! List) {
+      throw const FormatException('Invalid vehicle list response.');
+    }
+    final vehicles = <VolvoVehicle>[];
+    for (final raw in rawVehicles) {
+      if (raw is! Map) throw const FormatException('Invalid vehicle response.');
+      final id = raw['id'];
+      final label = raw['label'];
+      if (id is! String || id.isEmpty || label is! String || label.isEmpty) {
+        throw const FormatException('Invalid vehicle response.');
+      }
+      vehicles.add(VolvoVehicle(id: id, label: label));
+    }
+    final selected = data['selected_vehicle_id'];
+    if (selected != null && selected is! String) {
+      throw const FormatException('Invalid selected vehicle response.');
+    }
+    return VolvoVehicles(
+      vehicles: vehicles,
+      selectedVehicleId: selected as String?,
+    );
+  }
 
-  Future<void> disconnectEverywhere() =>
-      _disconnect('/leasegauge/api/disconnect');
+  Future<void> selectVehicle(String vehicleId) async {
+    if (demoMultipleVehicles) {
+      if (!_demoVehicles.any((vehicle) => vehicle.id == vehicleId)) {
+        throw StateError('The vehicle could not be selected.');
+      }
+      _demoSelectedVehicleId = vehicleId;
+      return;
+    }
+    final token = await _tokens.read();
+    if (token == null) throw StateError('Volvo is not connected.');
+    final response = await _http.post(
+      _endpoint('/leasegauge/api/vehicle/select'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'vehicle_id': vehicleId}),
+    );
+    if (response.statusCode == 401) {
+      await _tokens.clear();
+      throw StateError('Volvo is not connected.');
+    }
+    if (response.statusCode != 200) {
+      throw StateError('The vehicle could not be selected.');
+    }
+  }
+
+  Future<void> disconnectThisDevice() => demoMultipleVehicles
+      ? _disconnectDemo()
+      : _disconnect('/leasegauge/api/disconnect-device');
+
+  Future<void> disconnectEverywhere() => demoMultipleVehicles
+      ? _disconnectDemo()
+      : _disconnect('/leasegauge/api/disconnect');
+
+  Future<void> _disconnectDemo() async {
+    _demoConnected = false;
+    _demoSelectedVehicleId = null;
+  }
 
   Future<void> _disconnect(String path) async {
     final token = await _tokens.read();
