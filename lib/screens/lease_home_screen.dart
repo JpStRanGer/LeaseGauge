@@ -845,64 +845,74 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                   Wrap(
                                     spacing: 8,
                                     children: [
-                                      FilledButton.icon(
-                                        onPressed: _volvoBusy
-                                            ? null
-                                            : (_volvoConnected
-                                                  ? () => _refreshVolvo()
-                                                  : _connectVolvo),
-                                        icon: Icon(
-                                          _volvoBusy && _volvoConnected
-                                              ? Icons.hourglass_top_rounded
-                                              : _volvoConnected
-                                              ? Icons.refresh_rounded
-                                              : Icons.link_rounded,
-                                        ),
-                                        label: Text(
-                                          _volvoConnected
-                                              ? 'Update from Volvo'
-                                              : 'Connect Volvo',
+                                      SizedBox(
+                                        width: 156,
+                                        child: FilledButton.icon(
+                                          onPressed: _volvoBusy
+                                              ? null
+                                              : (_volvoConnected
+                                                    ? () => _refreshVolvo()
+                                                    : _connectVolvo),
+                                          icon: Icon(
+                                            _volvoBusy && _volvoConnected
+                                                ? Icons.hourglass_top_rounded
+                                                : _volvoConnected
+                                                ? Icons.refresh_rounded
+                                                : Icons.link_rounded,
+                                          ),
+                                          label: Text(
+                                            _volvoConnected
+                                                ? 'Update from Volvo'
+                                                : 'Connect Volvo',
+                                          ),
                                         ),
                                       ),
                                       if (_volvoConnected)
-                                        OutlinedButton.icon(
-                                          onPressed: _volvoBusy
-                                              ? null
-                                              : _disconnectVolvo,
-                                          icon: const Icon(
-                                            Icons.link_off_rounded,
+                                        SizedBox(
+                                          width: 156,
+                                          child: OutlinedButton.icon(
+                                            onPressed: _volvoBusy
+                                                ? null
+                                                : _disconnectVolvo,
+                                            icon: const Icon(
+                                              Icons.link_off_rounded,
+                                            ),
+                                            label: const Text('Disconnect'),
                                           ),
-                                          label: const Text('Disconnect'),
                                         ),
                                       if (_volvoConnected)
-                                        OutlinedButton.icon(
-                                          onPressed: _volvoBusy
-                                              ? null
-                                              : () async {
-                                                  final client = _volvoClient;
-                                                  if (client == null) return;
-                                                  setState(
-                                                    () => _volvoBusy = true,
-                                                  );
-                                                  final changed =
-                                                      await _chooseVolvoVehicle(
-                                                        client,
-                                                      );
-                                                  if (changed && mounted) {
-                                                    await _refreshVolvo(
-                                                      afterSelection: true,
-                                                    );
-                                                  }
-                                                  if (mounted) {
+                                        SizedBox(
+                                          width: 156,
+                                          child: OutlinedButton.icon(
+                                            onPressed: _volvoBusy
+                                                ? null
+                                                : () async {
+                                                    final client = _volvoClient;
+                                                    if (client == null) return;
                                                     setState(
-                                                      () => _volvoBusy = false,
+                                                      () => _volvoBusy = true,
                                                     );
-                                                  }
-                                                },
-                                          icon: const Icon(
-                                            Icons.directions_car_rounded,
+                                                    final changed =
+                                                        await _chooseVolvoVehicle(
+                                                          client,
+                                                        );
+                                                    if (changed && mounted) {
+                                                      await _refreshVolvo(
+                                                        afterSelection: true,
+                                                      );
+                                                    }
+                                                    if (mounted) {
+                                                      setState(
+                                                        () =>
+                                                            _volvoBusy = false,
+                                                      );
+                                                    }
+                                                  },
+                                            icon: const Icon(
+                                              Icons.directions_car_rounded,
+                                            ),
+                                            label: const Text('Change car'),
                                           ),
-                                          label: const Text('Change car'),
                                         ),
                                     ],
                                   ),
