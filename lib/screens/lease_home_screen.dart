@@ -300,31 +300,38 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
       }
       final vehicle = await showDialog<VolvoVehicle>(
         context: context,
-        builder: (context) => SimpleDialog(
+        builder: (context) => AlertDialog(
           title: const Text('Choose your leased car'),
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(24, 0, 24, 12),
-              child: Text(
-                'More than one car is linked to this Volvo ID. LeaseGauge will only read the odometer from the car you choose on this device.',
-              ),
-            ),
-            // Options are supplied only by the authenticated server. The
-            // server validates the chosen id against Volvo before saving it.
-            for (final vehicle in available.vehicles)
-              SimpleDialogOption(
-                onPressed: () => Navigator.of(context).pop(vehicle),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Text(vehicle.label),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'More than one car is linked to this Volvo ID. LeaseGauge will only read the odometer from the car you choose on this device.',
                 ),
-              ),
-            SimpleDialogOption(
+                const SizedBox(height: 16),
+                // Options are supplied only by the authenticated server. The
+                // server validates the chosen id against Volvo before saving it.
+                for (final vehicle in available.vehicles)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: OutlinedButton.icon(
+                      onPressed: () => Navigator.of(context).pop(vehicle),
+                      icon: const Icon(Icons.directions_car_rounded),
+                      label: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(vehicle.label),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: Text('Cancel'),
-              ),
+              child: const Text('Cancel'),
             ),
           ],
         ),
@@ -801,18 +808,28 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 14),
-                                Chip(
-                                  avatar: Icon(
-                                    _volvoConnected
-                                        ? Icons.sync_rounded
-                                        : Icons.edit_outlined,
-                                    size: 18,
-                                  ),
-                                  label: Text(
-                                    _volvoConnected
-                                        ? 'Volvo connected'
-                                        : 'Manual entry',
-                                  ),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      _volvoConnected
+                                          ? Icons.sync_rounded
+                                          : Icons.edit_outlined,
+                                      size: 18,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      _volvoConnected
+                                          ? 'Volvo connected'
+                                          : 'Manual entry',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelLarge,
+                                    ),
+                                  ],
                                 ),
                                 const SizedBox(height: 10),
                                 Text(
@@ -828,7 +845,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                   Wrap(
                                     spacing: 8,
                                     children: [
-                                      TextButton.icon(
+                                      FilledButton.icon(
                                         onPressed: _volvoBusy
                                             ? null
                                             : (_volvoConnected
@@ -848,14 +865,17 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                         ),
                                       ),
                                       if (_volvoConnected)
-                                        TextButton(
+                                        OutlinedButton.icon(
                                           onPressed: _volvoBusy
                                               ? null
                                               : _disconnectVolvo,
-                                          child: const Text('Disconnect'),
+                                          icon: const Icon(
+                                            Icons.link_off_rounded,
+                                          ),
+                                          label: const Text('Disconnect'),
                                         ),
                                       if (_volvoConnected)
-                                        TextButton(
+                                        OutlinedButton.icon(
                                           onPressed: _volvoBusy
                                               ? null
                                               : () async {
@@ -879,7 +899,10 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                                     );
                                                   }
                                                 },
-                                          child: const Text('Change car'),
+                                          icon: const Icon(
+                                            Icons.directions_car_rounded,
+                                          ),
+                                          label: const Text('Change car'),
                                         ),
                                     ],
                                   ),
