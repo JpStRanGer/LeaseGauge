@@ -317,6 +317,16 @@ class VolvoConnectionClient {
     _demoSelectedVehicleId = null;
   }
 
+  /// Available only in a build made with LEASEGAUGE_DEMO_MULTIPLE_VOLVOS.
+  /// It lets the visual test flow start over without calling Volvo.
+  Future<void> reconnectDemo() async {
+    if (!demoMultipleVehicles) {
+      throw StateError('Demo mode is not enabled.');
+    }
+    _demoConnected = true;
+    _demoSelectedVehicleId = null;
+  }
+
   Future<void> _disconnect(String path) async {
     final token = await _tokens.read();
     if (token == null) return;

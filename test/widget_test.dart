@@ -34,6 +34,9 @@ void main() {
     await tester.pumpWidget(LeaseGaugeApp(storage: store));
     await tester.pumpAndSettle();
     expect(find.text('+900 km'), findsOneWidget);
+    expect(find.text('Manual odometer'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('expandOdometerStatus')));
+    await tester.pumpAndSettle();
     expect(find.text('Manual entry'), findsOneWidget);
     expect(
       find.text('Volvo updates are not available in this version.'),

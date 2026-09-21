@@ -338,6 +338,13 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
       _volvoMessage = null;
     });
     try {
+      if (client.demoMultipleVehicles) {
+        await client.reconnectDemo();
+        if (!mounted) return;
+        setState(() => _volvoConnected = true);
+        await _refreshVolvo(afterSelection: true);
+        return;
+      }
       final pairing = await client.beginPairing();
       var launched = false;
       try {
@@ -581,7 +588,6 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
             returnDate: plan!.returnDate,
           );
     final collapseOdometer =
-        _volvoConnected &&
         !_odometerDetailsExpanded &&
         !_volvoBusy &&
         _phonePairing == null &&
@@ -670,9 +676,13 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(
-                                    Icons.check_circle_rounded,
-                                    color: Color(0xFF176B49),
+                                  Icon(
+                                    _volvoConnected
+                                        ? Icons.check_circle_rounded
+                                        : Icons.edit_rounded,
+                                    color: _volvoConnected
+                                        ? const Color(0xFF176B49)
+                                        : Theme.of(context).colorScheme.primary,
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
@@ -680,14 +690,19 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        const Text(
-                                          'Volvo connected',
+                                        Text(
+                                          _volvoConnected
+                                              ? 'Volvo connected'
+                                              : 'Manual odometer',
                                           style: TextStyle(
                                             fontWeight: FontWeight.w700,
                                           ),
                                         ),
                                         Text(
-                                          _selectedVolvoVehicleLabel == null
+                                          !_volvoConnected
+                                              ? 'Latest reading: ${_formatKm(plan.currentOdometerKm)}'
+                                              : _selectedVolvoVehicleLabel ==
+                                                    null
                                               ? 'Latest odometer: ${_formatKm(plan.currentOdometerKm)}'
                                               : '${_selectedVolvoVehicleLabel!} · ${_formatKm(plan.currentOdometerKm)}',
                                           style: Theme.of(context)
@@ -713,10 +728,48 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  'Current odometer',
-                                  style: Theme.of(context).textTheme.titleLarge
-                                      ?.copyWith(fontWeight: FontWeight.w700),
+                                InkWell(
+                                  key: const Key('collapseOdometerHeader'),
+                                  borderRadius: BorderRadius.circular(12),
+                                  onTap: () => setState(() {
+                                    _odometerDetailsExpanded = false;
+                                    if (_volvoRefreshFeedback ==
+                                        _VolvoRefreshFeedback.success) {
+                                      _volvoRefreshFeedback =
+                                          _VolvoRefreshFeedback.idle;
+                                      _volvoMessage = null;
+                                    }
+                                  }),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          'Current odometer',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleLarge
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                        ),
+                                      ),
+                                      IconButton(
+                                        tooltip: 'Hide odometer details',
+                                        onPressed: () => setState(() {
+                                          _odometerDetailsExpanded = false;
+                                          if (_volvoRefreshFeedback ==
+                                              _VolvoRefreshFeedback.success) {
+                                            _volvoRefreshFeedback =
+                                                _VolvoRefreshFeedback.idle;
+                                            _volvoMessage = null;
+                                          }
+                                        }),
+                                        icon: const Icon(
+                                          Icons.expand_less_rounded,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
@@ -811,19 +864,6 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                                   }
                                                 },
                                           child: const Text('Change car'),
-                                        ),
-                                      if (_volvoConnected)
-                                        TextButton(
-                                          onPressed: () => setState(() {
-                                            _odometerDetailsExpanded = false;
-                                            if (_volvoRefreshFeedback ==
-                                                _VolvoRefreshFeedback.success) {
-                                              _volvoRefreshFeedback =
-                                                  _VolvoRefreshFeedback.idle;
-                                              _volvoMessage = null;
-                                            }
-                                          }),
-                                          child: const Text('Hide details'),
                                         ),
                                     ],
                                   ),

@@ -208,6 +208,12 @@ void main() {
       );
       await client.disconnectThisDevice();
       expect(await client.isPaired(), isFalse);
+      await client.reconnectDemo();
+      expect(await client.isPaired(), isTrue);
+      expect(
+        client.readOdometer(),
+        throwsA(isA<VolvoVehicleSelectionRequired>()),
+      );
       client.close();
     },
   );
