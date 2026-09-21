@@ -178,6 +178,8 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
         setState(() {
           _volvoConnected = false;
           _volvoUpdatedAt = null;
+          _selectedVolvoVehicleLabel = null;
+          _latestOdometerIsFromVolvo = false;
           if (!silent) {
             _volvoRefreshFeedback = _VolvoRefreshFeedback.idle;
             _volvoMessage = 'Connect your Volvo to update automatically.';
@@ -526,6 +528,9 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
         setState(() {
           _volvoConnected = false;
           _volvoUpdatedAt = null;
+          _selectedVolvoVehicleLabel = null;
+          _latestOdometerIsFromVolvo = false;
+          _manualOdometerEditing = false;
           _volvoRefreshFeedback = _VolvoRefreshFeedback.idle;
           _volvoMessage = scope == _DisconnectScope.thisDevice
               ? 'Volvo disconnected on this device. Other devices stay connected.'
