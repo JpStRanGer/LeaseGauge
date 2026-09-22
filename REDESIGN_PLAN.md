@@ -53,6 +53,11 @@ histories.
 When a period-start reading is missing, show both the existing, clearly
 labelled `Suggested today` figure and a `Missing start-of-day reading` status.
 The same principle applies to week and month. Neither message hides the other.
+Manual readings update the existing total and rolling calculations exactly as
+before. They become timestamped local readings for the new calculation, but a
+value entered during the day is not retroactively a midnight reading. Only the
+new exact period balance waits for the missing data; its card stays visible
+with a plain explanation. We will not require manual date/time entry yet.
 
 ## Proposed implementation sequence
 

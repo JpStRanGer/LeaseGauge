@@ -53,6 +53,7 @@ class PeriodBudget {
     required this.basis,
     this.drivenKm,
     this.remainingKm,
+    this.measuredThrough,
   });
 
   final BudgetPeriod period;
@@ -62,6 +63,9 @@ class PeriodBudget {
   final PeriodBasis basis;
   final double? drivenKm;
   final double? remainingKm;
+
+  /// The remaining figure is true only as of this measurement, not "now".
+  final DateTime? measuredThrough;
 }
 
 DateTime _date(DateTime value) =>
@@ -216,5 +220,6 @@ PeriodBudget calculatePeriodBudget({
     basis: PeriodBasis.measured,
     drivenKm: driven,
     remainingKm: allowance - driven,
+    measuredThrough: latest.measuredAt,
   );
 }

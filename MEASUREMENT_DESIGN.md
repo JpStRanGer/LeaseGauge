@@ -47,6 +47,15 @@ total kilometres left until return.
 - Volvo's update timestamp is `measuredAt`. An identical stale Volvo response
   is not a new measurement. A manual entry uses entry time unless the user
   explicitly supplies a different measurement time.
+- A manual reading is a real odometer value, not an estimate, but its time is
+  only the time of entry. The current numeric-only form must not pretend that
+  a reading entered at 14:00 was taken at midnight. We will not add a date/time
+  input in the first redesign pass.
+- A successful manual entry still updates the unchanged contract and rolling
+  leisure calculations. It is added to the local history without replacing
+  earlier records or affecting another car's series. Missing period data
+  disables only the *new exact period balance*, not manual entry, total
+  contract balance, or the existing suggestion.
 - Keep readings for different cars apart. Do not calculate a distance between
   the odometers of two cars. A car change starts a separate measurement series.
 - Store readings only on the current device, separate from plan storage and
@@ -65,9 +74,16 @@ total kilometres left until return.
 - The new period result therefore says either `measured`, `estimated`, or
   `missing basis`. A result must state the readings and assumptions that led
   to it. No guessed value receives the `measured` label.
+- A measured balance is **as of the latest odometer measurement**, not
+  necessarily as of the current minute. Show that measurement time alongside
+  the number, especially for a manual entry.
 - While the basis is missing, the UI shows the existing rolling `Suggested
   today` value **and** `Missing start-of-day reading`. This also applies to
   week and month. Existing numbers never disappear during the redesign.
+- If the start reading exists but no later reading does, say that a newer
+  reading is needed. A manual entry made later can supply that reading. If
+  the start reading is missing, entering a value *now* cannot reconstruct it;
+  explain this without asking the user to guess a historic value.
 - The new balance subtracts the **whole odometer change**. It never guesses
   which kilometres were commuting. The existing leisure calculation continues
   to reserve planned commuting separately.

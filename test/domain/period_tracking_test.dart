@@ -64,6 +64,7 @@ void main() {
     expect(result.allowanceKm, 20);
     expect(result.drivenKm, 6);
     expect(result.remainingKm, 14);
+    expect(result.measuredThrough, end.measuredAt);
   });
 
   test('another car cannot supply the missing start reading', () {
@@ -82,5 +83,53 @@ void main() {
       period: BudgetPeriod.day,
     );
     expect(result.basis, PeriodBasis.missingStart);
+  });
+
+  test('a daytime manual entry cannot masquerade as a midnight reading', () {
+    final manual = DatedOdometerReading(
+      carKey: 'car-a',
+      kilometers: 1020,
+      source: OdometerReadingSource.manual,
+      measuredAt: DateTime(2026, 9, 23, 14),
+      receivedAt: DateTime(2026, 9, 23, 14),
+    );
+    final result = calculatePeriodBudget(
+      baseline: baseline,
+      readings: [manual],
+      now: DateTime(2026, 9, 23, 15),
+      period: BudgetPeriod.day,
+    );
+    expect(result.allowanceKm, 20);
+    expect(result.basis, PeriodBasis.missingStart);
+    expect(result.drivenKm, isNull);
+    expect(result.remainingKm, isNull);
+  });
+
+  test('a later manual entry can complete an existing boundary pair', () {
+    final result = calculatePeriodBudget(
+      baseline: baseline,
+      readings: [
+        DatedOdometerReading(
+          carKey: 'car-a',
+          kilometers: 1000,
+          source: OdometerReadingSource.manual,
+          measuredAt: DateTime(2026, 9, 23),
+          receivedAt: DateTime(2026, 9, 23),
+        ),
+        DatedOdometerReading(
+          carKey: 'car-a',
+          kilometers: 1012,
+          source: OdometerReadingSource.manual,
+          measuredAt: DateTime(2026, 9, 23, 17),
+          receivedAt: DateTime(2026, 9, 23, 17),
+        ),
+      ],
+      now: DateTime(2026, 9, 23, 18),
+      period: BudgetPeriod.day,
+    );
+    expect(result.basis, PeriodBasis.measured);
+    expect(result.drivenKm, 12);
+    expect(result.remainingKm, 8);
+    expect(result.measuredThrough, DateTime(2026, 9, 23, 17));
   });
 }
