@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:leasegauge/data/legal_acceptance_storage.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -131,7 +132,12 @@ class LegalDocumentLinks extends StatelessWidget {
     try {
       launched = await launchUrl(
         Uri.parse(url),
-        mode: LaunchMode.externalApplication,
+        mode: kIsWeb
+            ? LaunchMode.platformDefault
+            : LaunchMode.externalApplication,
+        // A new tab can be blocked in browser-hosted test environments.
+        // Back returns to the still-unaccepted gate.
+        webOnlyWindowName: kIsWeb ? '_self' : null,
       );
     } on Exception {
       // Some car systems have no browser. A QR code remains available below.
@@ -152,7 +158,7 @@ class LegalDocumentLinks extends StatelessWidget {
                 'Scan this code with your phone to read the document.',
               ),
               const SizedBox(height: 16),
-              QrImageView(data: url, size: 200),
+              SizedBox(width: 200, height: 200, child: QrImageView(data: url)),
               const SizedBox(height: 8),
               SelectableText(url),
             ],

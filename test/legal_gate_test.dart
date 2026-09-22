@@ -39,6 +39,15 @@ void main() {
     expect(find.byKey(const Key('openPrivacyButton')), findsOneWidget);
     expect(find.byKey(const Key('acceptTermsButton')), findsOneWidget);
 
+    await tester.tap(find.byKey(const Key('legalQrButton')));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Scan this code with your phone to read the document.'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+
     await tester.tap(find.byKey(const Key('acceptTermsButton')));
     await tester.pumpAndSettle();
     expect(store.saves, 1);
