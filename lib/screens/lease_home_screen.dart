@@ -9,6 +9,7 @@ import 'package:leasegauge/domain/lease_calculator.dart';
 import 'package:leasegauge/domain/period_tracking.dart';
 import 'package:leasegauge/screens/lease_setup_screen.dart';
 import 'package:leasegauge/screens/feedback_screen.dart';
+import 'package:leasegauge/screens/legal_gate.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -1463,6 +1464,8 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                         label: const Text('Send feedback'),
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    const LegalDocumentLinks(),
                   ],
                 ),
               ),

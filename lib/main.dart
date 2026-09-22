@@ -1,17 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:leasegauge/data/lease_form_storage.dart';
+import 'package:leasegauge/data/legal_acceptance_storage.dart';
 import 'package:leasegauge/data/period_tracking_storage.dart';
 import 'package:leasegauge/screens/lease_home_screen.dart';
+import 'package:leasegauge/screens/legal_gate.dart';
 
 void main() {
   runApp(const LeaseGaugeApp());
 }
 
 class LeaseGaugeApp extends StatelessWidget {
-  const LeaseGaugeApp({super.key, this.storage, this.trackingStore});
+  const LeaseGaugeApp({
+    super.key,
+    this.storage,
+    this.trackingStore,
+    this.legalStore,
+  });
 
   final LeaseFormStore? storage;
   final PeriodTrackingStore? trackingStore;
+  final LegalAcceptanceStore? legalStore;
 
   @override
   Widget build(BuildContext context) {
@@ -57,9 +65,12 @@ class LeaseGaugeApp extends StatelessWidget {
           ),
         ),
       ),
-      home: LeaseHomeScreen(
-        storage: storage ?? LeaseFormStorage(),
-        trackingStore: trackingStore ?? LocalPeriodTrackingStore(),
+      home: LegalGate(
+        store: legalStore ?? LocalLegalAcceptanceStore(),
+        child: LeaseHomeScreen(
+          storage: storage ?? LeaseFormStorage(),
+          trackingStore: trackingStore ?? LocalPeriodTrackingStore(),
+        ),
       ),
     );
   }

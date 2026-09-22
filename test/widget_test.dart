@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:leasegauge/data/lease_form_storage.dart';
+import 'package:leasegauge/data/legal_acceptance_storage.dart';
 import 'package:leasegauge/data/period_tracking_storage.dart';
 import 'package:leasegauge/main.dart';
 
@@ -16,6 +17,14 @@ class _MemoryLeaseFormStore implements LeaseFormStore {
   Future<void> save(LeaseFormValues values) async {
     this.values = values;
   }
+}
+
+class _AcceptedLegalStore implements LegalAcceptanceStore {
+  @override
+  Future<bool> hasAcceptedCurrentTerms() async => true;
+
+  @override
+  Future<void> acceptCurrentTerms() async {}
 }
 
 class _MemoryPeriodTrackingStore implements PeriodTrackingStore {
@@ -60,7 +69,11 @@ void main() {
     );
     final trackingStore = _MemoryPeriodTrackingStore();
     await tester.pumpWidget(
-      LeaseGaugeApp(storage: store, trackingStore: trackingStore),
+      LeaseGaugeApp(
+        storage: store,
+        trackingStore: trackingStore,
+        legalStore: _AcceptedLegalStore(),
+      ),
     );
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
@@ -118,7 +131,11 @@ void main() {
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpWidget(
-      LeaseGaugeApp(storage: store, trackingStore: trackingStore),
+      LeaseGaugeApp(
+        storage: store,
+        trackingStore: trackingStore,
+        legalStore: _AcceptedLegalStore(),
+      ),
     );
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
@@ -144,6 +161,7 @@ void main() {
     );
     await tester.pumpWidget(
       LeaseGaugeApp(
+        legalStore: _AcceptedLegalStore(),
         storage: store,
         trackingStore: _MemoryPeriodTrackingStore(),
       ),
@@ -176,6 +194,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       LeaseGaugeApp(
+        legalStore: _AcceptedLegalStore(),
         storage: _MemoryLeaseFormStore(),
         trackingStore: _MemoryPeriodTrackingStore(),
       ),
@@ -207,6 +226,7 @@ void main() {
       );
       await tester.pumpWidget(
         LeaseGaugeApp(
+          legalStore: _AcceptedLegalStore(),
           storage: store,
           trackingStore: _MemoryPeriodTrackingStore(),
         ),
@@ -243,7 +263,11 @@ void main() {
     );
     final trackingStore = _UnreadablePeriodTrackingStore();
     await tester.pumpWidget(
-      LeaseGaugeApp(storage: store, trackingStore: trackingStore),
+      LeaseGaugeApp(
+        storage: store,
+        trackingStore: trackingStore,
+        legalStore: _AcceptedLegalStore(),
+      ),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('expandOdometerStatus')));
@@ -275,6 +299,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       LeaseGaugeApp(
+        legalStore: _AcceptedLegalStore(),
         storage: _MemoryLeaseFormStore(),
         trackingStore: _MemoryPeriodTrackingStore(),
       ),
@@ -309,6 +334,7 @@ void main() {
     );
     await tester.pumpWidget(
       LeaseGaugeApp(
+        legalStore: _AcceptedLegalStore(),
         storage: store,
         trackingStore: _MemoryPeriodTrackingStore(),
       ),
@@ -387,6 +413,7 @@ void main() {
     );
     await tester.pumpWidget(
       LeaseGaugeApp(
+        legalStore: _AcceptedLegalStore(),
         storage: store,
         trackingStore: _MemoryPeriodTrackingStore(),
       ),
