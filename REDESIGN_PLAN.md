@@ -45,6 +45,10 @@ at the start of the period, and a later reading. The app currently persists
 only the latest odometer reading and has no lease start date or reading history.
 Volvo may also provide an odometer timestamp that does not fall on a calendar
 boundary. We must not label an estimated balance as an exact measured one.
+The baseline begins when tracking is activated, and dated readings are stored
+only on that device. There will be no server, database, or cross-device sync
+for this feature. The phone and car may consequently show different period
+histories.
 
 When a period-start reading is missing, show both the existing, clearly
 labelled `Suggested today` figure and a `Missing start-of-day reading` status.
@@ -71,5 +75,3 @@ The same principle applies to week and month. Neither message hides the other.
   or behind a `What does this mean?` action?
 - How should an incomplete day/week/month be credited when we have readings
   near, but not at, its start? The measurement design describes the options.
-- Should period figures be tied to a single device or shared between the
-  user's phone and car? The current plan and readings are stored per device.

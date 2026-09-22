@@ -1,6 +1,8 @@
 # Measurement design before implementation
 
-Status: proposal for review. No calculation or storage code has changed yet.
+Status: local storage and a pure calculation prototype are implemented on the
+redesign branch. They are not connected to the home screen or live readings.
+The period formula and missing-boundary presentation still need in-app review.
 The pre-redesign version is tag `pre-redesign-2026-09-22`.
 
 ## What the app knows today
@@ -34,9 +36,9 @@ total kilometres left until return.
 ## Proposed data model
 
 - A period-budget baseline has a stable plan ID, effective date, odometer,
-  remaining contract distance, return date and commute schedule. One simple
-  option is to start this baseline when the new feature is activated, because
-  the current app does not know the lease start date. An edit to allowance,
+  remaining contract distance, return date and commute schedule. Start this
+  baseline when tracking is activated; do not invent history or require the
+  lease start date. An edit to allowance,
   return date or commute schedule creates a new revision, so old readings are
   not silently reinterpreted without notice.
 - `OdometerReading` is an immutable record with plan ID, car ID when known,
@@ -47,7 +49,9 @@ total kilometres left until return.
   explicitly supplies a different measurement time.
 - Keep readings for different cars apart. Do not calculate a distance between
   the odometers of two cars. A car change starts a separate measurement series.
-- Storage of readings is separate from plan storage and calculation. A pure
+- Store readings only on the current device, separate from plan storage and
+  calculation. Do not add server endpoints, an account sync, or a database.
+  A pure
   calculator consumes a plan revision and readings, returning numbers plus
   quality states. No UI widget should infer the quality itself.
 
@@ -78,22 +82,19 @@ days add up to the remaining contract distance. A week/month allowance is the
 sum of its days. Subtract the total odometer increase in that period, with no
 attempt to classify individual trips.
 
-This is a proposal, not an implemented or approved formula. In particular,
+The formula has a tested standalone prototype, but is not yet approved for
+presentation to users. In particular,
 the first partial day/week/month has no historic start reading and must show
 its missing basis alongside the existing rolling suggestion.
 
 ## Questions that affect the formula or storage
 
-1. Should the new period baseline begin when tracking is enabled, with no new
-   input and no invented history, or should users enter the actual lease start
-   date? The latter still cannot reconstruct old boundary odometer readings.
-2. If the car is not read at midnight, should the new period balance show a
+1. If the car is not read at midnight, should the new period balance show a
    clearly marked approximation based on nearby readings, or remain unknown?
    The rolling suggestion remains visible either way.
-3. Should period history be shared across phone and car? Local history is
-   simplest but can produce different period results on the two devices.
-   Shared history requires a deliberate server and account design, especially
-   for users who enter readings manually without connecting Volvo.
+
+Local history means phone and car can produce different period results. This
+is an intentional consequence of keeping the feature entirely on-device.
 
 ## Verification before replacing any presentation
 
