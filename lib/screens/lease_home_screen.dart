@@ -1158,21 +1158,25 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                           ),
                         ),
                       const SizedBox(height: 18),
+                      _DailySuggestionCard(
+                        value: _formatKm(budgets!.todayKm, signed: true),
+                      ),
+                      const SizedBox(height: 14),
                       _BalanceHero(
-                        balance: _formatKm(budgets!.totalKm, signed: true),
+                        balance: _formatKm(budgets.totalKm, signed: true),
                         onTrack: budgets.totalKm >= 0,
                         returnDate: MaterialLocalizations.of(context)
                             .formatShortDate(plan.returnDate),
                       ),
                       const SizedBox(height: 26),
                       Text(
-                        'Suggested leisure budget',
+                        'Other rolling suggestions',
                         style: Theme.of(context).textTheme.titleLarge
                             ?.copyWith(fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'An even share of your remaining leisure kilometres.',
+                        'These shares are recalculated from your latest saved odometer reading. They are not measured period balances.',
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
@@ -1191,7 +1195,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                               _BudgetTile(
                                 width: cardWidth,
                                 icon: Icons.calendar_month_rounded,
-                                label: 'Rest of this month',
+                                label: 'Suggested for the rest of this month',
                                 value: _formatKm(
                                   budgets.currentMonthKm,
                                   signed: true,
@@ -1200,7 +1204,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                               _BudgetTile(
                                 width: cardWidth,
                                 icon: Icons.date_range_rounded,
-                                label: 'Rest of this week',
+                                label: 'Suggested for the rest of this week',
                                 value: _formatKm(
                                   budgets.currentWeekKm,
                                   signed: true,
@@ -1209,7 +1213,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                               _BudgetTile(
                                 width: cardWidth,
                                 icon: Icons.today_rounded,
-                                label: 'Today',
+                                label: 'Suggested today',
                                 value: _formatKm(budgets.todayKm, signed: true),
                               ),
                             ],
@@ -1318,6 +1322,56 @@ class _EmptyPlan extends StatelessWidget {
               onPressed: onEdit,
               icon: const Icon(Icons.add_rounded),
               label: const Text('Set up your lease'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DailySuggestionCard extends StatelessWidget {
+  const _DailySuggestionCard({required this.value});
+
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      key: const Key('dailySuggestionCard'),
+      margin: EdgeInsets.zero,
+      color: const Color(0xFFEAF3F2),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Suggested today',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 10),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                style: theme.textTheme.displayMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'A rolling share of your remaining leisure kilometres. This is not a measured balance for today.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),

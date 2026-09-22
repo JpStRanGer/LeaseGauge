@@ -47,13 +47,57 @@ void main() {
     await tester.tap(find.byKey(const Key('saveOdometerButton')));
     await tester.pumpAndSettle();
     expect(store.values!.currentOdometerKm, 250);
+    await tester.scrollUntilVisible(
+      find.text('+750 km'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('+750 km'), findsOneWidget);
 
+    await tester.ensureVisible(find.byKey(const Key('quickOdometerField')));
+    await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('quickOdometerField')), '200');
     await tester.tap(find.byKey(const Key('saveOdometerButton')));
     await tester.pump();
     expect(store.values!.currentOdometerKm, 250);
+    await tester.scrollUntilVisible(
+      find.text('+750 km'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('+750 km'), findsOneWidget);
+  });
+
+  testWidgets('daily suggestion is prominent without changing old totals', (
+    WidgetTester tester,
+  ) async {
+    final store = _MemoryLeaseFormStore(
+      values: LeaseFormValues(
+        allowedDistanceKm: 1000,
+        startOdometerKm: 0,
+        currentOdometerKm: 100,
+        commuteDistanceKm: 0,
+        returnDate: DateTime.now().add(const Duration(days: 30)),
+        commuteWeekdays: const {},
+      ),
+    );
+    await tester.pumpWidget(LeaseGaugeApp(storage: store));
+    await tester.pumpAndSettle();
+
+    final dailyCard = find.byKey(const Key('dailySuggestionCard'));
+    expect(dailyCard, findsOneWidget);
+    expect(
+      find.descendant(of: dailyCard, matching: find.text('+30 km')),
+      findsOneWidget,
+    );
+    expect(find.text('+900 km'), findsOneWidget);
+    expect(
+      find.text(
+        'A rolling share of your remaining leisure kilometres. This is not a measured balance for today.',
+      ),
+      findsOneWidget,
+    );
+    expect(store.values!.currentOdometerKm, 100);
   });
 
   testWidgets('home is an overview and opens a separate setup page', (
