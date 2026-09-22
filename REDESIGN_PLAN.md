@@ -60,24 +60,33 @@ value entered during the day is not retroactively a midnight reading. Only the
 new exact period balance waits for the missing data; its card stays visible
 with a plain explanation. We will not require manual date/time entry yet.
 
-## Proposed implementation sequence
+## Small test releases
 
-1. Define the period rules and data model: measurement start, dated readings,
-   and clear handling of missing boundary readings and planned commuting.
-2. Implement and test the calculation independently of the UI, including
-   month/week changes, negative balances, missed readings, and car changes.
-3. Persist readings locally without losing existing plans. Show an honest
-   suggested value while measured period data is insufficient.
-4. Redesign the home hierarchy: daily figure first, a small view switch,
-   total-to-return below, and restrained week/month details.
-5. Review real screenshots on phone, car emulator, and browser; adjust the
-   layout with the user's feedback. Keep Volvo and manual flows working.
-6. Verify tests and compare the redesign branch with the baseline. Merge only
-   after the numbers and interaction make sense in real use.
+Introduce one visible change at a time. Before moving to the next slice,
+exercise the current slice on phone, car emulator, and browser, compare its
+figures with the baseline, and fix regressions. Do not publish to Play or
+merge into `main` merely because a branch test passes.
+
+1. **Presentation only:** make the existing rolling daily suggestion easier
+   to see and label it clearly. Keep the total balance and the existing
+   month/week/day numbers, Volvo controls, and manual entry. No new tracking
+   or new period number is active in this test release.
+2. **Local reading history:** connect the already-isolated local store to
+   successful manual and Volvo updates. Show a small read-only data-quality
+   status. Preserve old plan keys and all old calculations. Test app restart,
+   offline use, and switching cars before the next release.
+3. **New daily comparison:** show the approved commute-aware assigned daily
+   allowance alongside the old rolling suggestion. Show a measured balance
+   only with a true boundary reading; otherwise show the approved missing
+   start-reading message. Review actual behaviour before extending it.
+4. **Week/month and layout:** add those period comparisons only after the day
+   is understood. Then refine the calm daily-first hierarchy and optional
+   personal explanation without removing any old figures.
+
+Each slice is separately reversible. The existing `main` and baseline tag
+remain untouched until the user reviews and approves a merge.
 
 ## Decisions to finish with the user
 
 - Should the optional personal comparison be shown automatically when useful,
   or behind a `What does this mean?` action?
-- Should the fixed total-driving budget be even per day, or higher on planned
-  commute days? The prototype uses the latter; it still needs approval.
