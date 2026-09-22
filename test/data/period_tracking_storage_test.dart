@@ -28,6 +28,7 @@ void main() {
         returnDate: DateTime(2029, 2, 16),
         commuteRoundTripKm: 36,
         commuteWeekdays: const {DateTime.monday, DateTime.friday},
+        planSignature: 'plan-terms-v1',
       ),
       readings: [
         DatedOdometerReading(
@@ -44,6 +45,7 @@ void main() {
     final loaded = await store.load();
     expect(loaded, hasLength(1));
     expect(loaded.single.baseline.carKey, 'car-a');
+    expect(loaded.single.baseline.planSignature, 'plan-terms-v1');
     expect(loaded.single.baseline.commuteWeekdays, {
       DateTime.monday,
       DateTime.friday,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:leasegauge/data/lease_form_storage.dart';
+import 'package:leasegauge/data/period_tracking_storage.dart';
 import 'package:leasegauge/main.dart';
 
 class _MemoryLeaseFormStore implements LeaseFormStore {
@@ -14,6 +15,32 @@ class _MemoryLeaseFormStore implements LeaseFormStore {
   @override
   Future<void> save(LeaseFormValues values) async {
     this.values = values;
+  }
+}
+
+class _MemoryPeriodTrackingStore implements PeriodTrackingStore {
+  List<PeriodTrackingSession> sessions = [];
+
+  @override
+  Future<List<PeriodTrackingSession>> load() async => sessions;
+
+  @override
+  Future<void> save(List<PeriodTrackingSession> sessions) async {
+    this.sessions = sessions;
+  }
+}
+
+class _UnreadablePeriodTrackingStore implements PeriodTrackingStore {
+  bool saveCalled = false;
+
+  @override
+  Future<List<PeriodTrackingSession>> load() async {
+    throw const FormatException('Unreadable local history');
+  }
+
+  @override
+  Future<void> save(List<PeriodTrackingSession> sessions) async {
+    saveCalled = true;
   }
 }
 
@@ -31,7 +58,10 @@ void main() {
         commuteWeekdays: const {},
       ),
     );
-    await tester.pumpWidget(LeaseGaugeApp(storage: store));
+    final trackingStore = _MemoryPeriodTrackingStore();
+    await tester.pumpWidget(
+      LeaseGaugeApp(storage: store, trackingStore: trackingStore),
+    );
     await tester.pumpAndSettle();
     expect(find.text('+900 km'), findsOneWidget);
     expect(find.text('Manual odometer'), findsOneWidget);
@@ -47,6 +77,9 @@ void main() {
     await tester.tap(find.byKey(const Key('saveOdometerButton')));
     await tester.pumpAndSettle();
     expect(store.values!.currentOdometerKm, 250);
+    expect(trackingStore.sessions, hasLength(1));
+    expect(trackingStore.sessions.single.readings, hasLength(1));
+    expect(trackingStore.sessions.single.readings.single.kilometers, 250);
     await tester.scrollUntilVisible(
       find.text('+750 km'),
       200,
@@ -60,12 +93,25 @@ void main() {
     await tester.tap(find.byKey(const Key('saveOdometerButton')));
     await tester.pump();
     expect(store.values!.currentOdometerKm, 250);
+    expect(trackingStore.sessions.single.readings, hasLength(1));
     await tester.scrollUntilVisible(
       find.text('+750 km'),
       200,
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('+750 km'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpWidget(
+      LeaseGaugeApp(storage: store, trackingStore: trackingStore),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('1 manual reading saved on this device.'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('1 manual reading saved on this device.'), findsOneWidget);
   });
 
   testWidgets('daily suggestion is prominent without changing old totals', (
@@ -81,7 +127,12 @@ void main() {
         commuteWeekdays: const {},
       ),
     );
-    await tester.pumpWidget(LeaseGaugeApp(storage: store));
+    await tester.pumpWidget(
+      LeaseGaugeApp(
+        storage: store,
+        trackingStore: _MemoryPeriodTrackingStore(),
+      ),
+    );
     await tester.pumpAndSettle();
 
     final dailyCard = find.byKey(const Key('dailySuggestionCard'));
@@ -100,10 +151,57 @@ void main() {
     expect(store.values!.currentOdometerKm, 100);
   });
 
+  testWidgets('broken history does not prevent the old manual save', (
+    WidgetTester tester,
+  ) async {
+    final store = _MemoryLeaseFormStore(
+      values: LeaseFormValues(
+        allowedDistanceKm: 1000,
+        startOdometerKm: 0,
+        currentOdometerKm: 100,
+        commuteDistanceKm: 0,
+        returnDate: DateTime.now().add(const Duration(days: 30)),
+        commuteWeekdays: const {},
+      ),
+    );
+    final trackingStore = _UnreadablePeriodTrackingStore();
+    await tester.pumpWidget(
+      LeaseGaugeApp(storage: store, trackingStore: trackingStore),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('expandOdometerStatus')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('quickOdometerField')), '250');
+    await tester.tap(find.byKey(const Key('saveOdometerButton')));
+    await tester.pumpAndSettle();
+
+    expect(store.values!.currentOdometerKm, 250);
+    expect(trackingStore.saveCalled, isFalse);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('localTrackingCard')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('localTrackingCard')),
+        matching: find.text(
+          'Odometer saved, but local period history could not be saved.',
+        ),
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('home is an overview and opens a separate setup page', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(LeaseGaugeApp(storage: _MemoryLeaseFormStore()));
+    await tester.pumpWidget(
+      LeaseGaugeApp(
+        storage: _MemoryLeaseFormStore(),
+        trackingStore: _MemoryPeriodTrackingStore(),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('LeaseGauge'), findsOneWidget);
@@ -132,7 +230,12 @@ void main() {
         returnDate: DateTime.now().add(const Duration(days: 365)),
       ),
     );
-    await tester.pumpWidget(LeaseGaugeApp(storage: store));
+    await tester.pumpWidget(
+      LeaseGaugeApp(
+        storage: store,
+        trackingStore: _MemoryPeriodTrackingStore(),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Your driving outlook'), findsOneWidget);
@@ -205,7 +308,12 @@ void main() {
         commuteWeekdays: const {},
       ),
     );
-    await tester.pumpWidget(LeaseGaugeApp(storage: store));
+    await tester.pumpWidget(
+      LeaseGaugeApp(
+        storage: store,
+        trackingStore: _MemoryPeriodTrackingStore(),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('+900 km'), findsOneWidget);

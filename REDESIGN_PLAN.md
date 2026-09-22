@@ -72,9 +72,11 @@ merge into `main` merely because a branch test passes.
    month/week/day numbers, Volvo controls, and manual entry. No new tracking
    or new period number is active in this test release.
 2. **Local reading history:** connect the already-isolated local store to
-   successful manual and Volvo updates. Show a small read-only data-quality
-   status. Preserve old plan keys and all old calculations. Test app restart,
-   offline use, and switching cars before the next release.
+   successful manual updates first, with a small read-only status. Test that
+   an app restart preserves the history and a storage error does not break
+   the existing budget. Connect Volvo updates in a later, separate test slice,
+   then test offline use and switching cars. Preserve old plan keys and all
+   old calculations throughout.
 3. **New daily comparison:** show the approved commute-aware assigned daily
    allowance alongside the old rolling suggestion. Show a measured balance
    only with a true boundary reading; otherwise show the approved missing

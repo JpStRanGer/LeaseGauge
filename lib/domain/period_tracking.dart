@@ -11,6 +11,7 @@ class PeriodTrackingBaseline {
     required this.returnDate,
     required this.commuteRoundTripKm,
     required this.commuteWeekdays,
+    this.planSignature,
   });
 
   final String carKey;
@@ -20,6 +21,9 @@ class PeriodTrackingBaseline {
   final DateTime returnDate;
   final double commuteRoundTripKm;
   final Set<int> commuteWeekdays;
+
+  /// Identifies the plan terms; old sessions stay separate after plan edits.
+  final String? planSignature;
 }
 
 enum OdometerReadingSource { manual, volvo }

@@ -85,6 +85,7 @@ class LocalPeriodTrackingStore implements PeriodTrackingStore {
           commuteWeekdays: (baseline['commuteWeekdays'] as List)
               .map((day) => (day as num).toInt())
               .toSet(),
+          planSignature: baseline['planSignature'] as String?,
         ),
         readings: readingItems.map((item) {
           final reading = item as Map<String, dynamic>;
@@ -118,6 +119,7 @@ class LocalPeriodTrackingStore implements PeriodTrackingStore {
             'returnDate': baseline.returnDate.toIso8601String(),
             'commuteRoundTripKm': baseline.commuteRoundTripKm,
             'commuteWeekdays': baseline.commuteWeekdays.toList()..sort(),
+            'planSignature': baseline.planSignature,
           },
           'readings': session.readings
               .map(

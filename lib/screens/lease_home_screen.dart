@@ -2,8 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:leasegauge/data/lease_form_storage.dart';
+import 'package:leasegauge/data/period_tracking_storage.dart';
+import 'package:leasegauge/data/period_tracking_recorder.dart';
 import 'package:leasegauge/data/volvo_connection_client.dart';
 import 'package:leasegauge/domain/lease_calculator.dart';
+import 'package:leasegauge/domain/period_tracking.dart';
 import 'package:leasegauge/screens/lease_setup_screen.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -13,9 +16,14 @@ enum _DisconnectScope { thisDevice, everywhere }
 enum _VolvoRefreshFeedback { idle, loading, success }
 
 class LeaseHomeScreen extends StatefulWidget {
-  const LeaseHomeScreen({super.key, required this.storage});
+  const LeaseHomeScreen({
+    super.key,
+    required this.storage,
+    required this.trackingStore,
+  });
 
   final LeaseFormStore storage;
+  final PeriodTrackingStore trackingStore;
 
   @override
   State<LeaseHomeScreen> createState() => _LeaseHomeScreenState();
@@ -24,6 +32,8 @@ class LeaseHomeScreen extends StatefulWidget {
 class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
   static const _volvoEnabled = bool.fromEnvironment('LEASEGAUGE_VOLVO_ENABLED');
   LeaseFormValues? _plan;
+  List<PeriodTrackingSession> _trackingSessions = [];
+  String? _trackingError;
   bool _loading = true;
   bool _loadFailed = false;
   bool _savingOdometer = false;
@@ -60,6 +70,36 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
         : plan.currentOdometerKm.toString();
   }
 
+  String get _manualCarKey => _selectedVolvoVehicleLabel == null
+      ? 'manual-unassigned'
+      : 'volvo-label:${_selectedVolvoVehicleLabel!}';
+
+  Future<void> _recordManualReading(
+    LeaseFormValues plan,
+    double kilometers,
+    String carKey,
+  ) async {
+    if (_trackingError != null) {
+      throw const FormatException(
+        'Existing local history could not be read safely.',
+      );
+    }
+    final next = appendManualReading(
+      sessions: _trackingSessions,
+      plan: plan,
+      carKey: carKey,
+      kilometers: kilometers,
+      recordedAt: DateTime.now(),
+    );
+    await widget.trackingStore.save(next);
+    if (mounted) {
+      setState(() {
+        _trackingSessions = next;
+        _trackingError = null;
+      });
+    }
+  }
+
   void _showVolvoMessage(String message) {
     if (!mounted) return;
     setState(() => _volvoMessage = message);
@@ -90,11 +130,21 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
       return;
     }
     if (reading == plan.currentOdometerKm) return;
+    final manualCarKey = _manualCarKey;
     FocusScope.of(context).unfocus();
     setState(() => _savingOdometer = true);
     try {
       final updated = plan.withCurrentOdometer(reading);
       await widget.storage.save(updated);
+      if (!mounted) return;
+      String? historyWarning;
+      try {
+        await _recordManualReading(updated, reading, manualCarKey);
+      } on Exception {
+        historyWarning =
+            'Odometer saved, but local period history could not be saved.';
+        if (mounted) setState(() => _trackingError = historyWarning);
+      }
       if (!mounted) return;
       setState(() {
         _setPlan(updated);
@@ -102,8 +152,10 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
         _manualOdometerEditing = true;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Odometer saved. Your budget is up to date.'),
+        SnackBar(
+          content: Text(
+            historyWarning ?? 'Odometer saved. Your budget is up to date.',
+          ),
         ),
       );
     } on Exception {
@@ -128,9 +180,18 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
   Future<void> _loadPlan() async {
     try {
       final plan = await widget.storage.load();
+      List<PeriodTrackingSession> trackingSessions = [];
+      String? trackingError;
+      try {
+        trackingSessions = await widget.trackingStore.load();
+      } on Exception {
+        trackingError = 'Local period history could not be loaded.';
+      }
       if (!mounted) return;
       setState(() {
         if (plan != null) _setPlan(plan);
+        _trackingSessions = trackingSessions;
+        _trackingError = trackingError;
         _loading = false;
         _loadFailed = false;
       });
@@ -1221,6 +1282,22 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                         },
                       ),
                       const SizedBox(height: 26),
+                      _LocalTrackingCard(
+                        manualReadingCount: _trackingSessions.fold<int>(
+                          0,
+                          (count, session) =>
+                              count +
+                              session.readings
+                                  .where(
+                                    (reading) =>
+                                        reading.source ==
+                                        OdometerReadingSource.manual,
+                                  )
+                                  .length,
+                        ),
+                        error: _trackingError,
+                      ),
+                      const SizedBox(height: 26),
                       Text(
                         'Lease snapshot',
                         style: Theme.of(context).textTheme.titleLarge
@@ -1322,6 +1399,53 @@ class _EmptyPlan extends StatelessWidget {
               onPressed: onEdit,
               icon: const Icon(Icons.add_rounded),
               label: const Text('Set up your lease'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LocalTrackingCard extends StatelessWidget {
+  const _LocalTrackingCard({
+    required this.manualReadingCount,
+    required this.error,
+  });
+
+  final int manualReadingCount;
+  final String? error;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final message =
+        error ??
+        (manualReadingCount == 0
+            ? 'No manual readings saved on this device yet.'
+            : '$manualReadingCount manual reading${manualReadingCount == 1 ? '' : 's'} saved on this device.');
+    return Card(
+      key: const Key('localTrackingCard'),
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Local reading history · preview',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(message),
+            const SizedBox(height: 6),
+            Text(
+              'This history stays on this device. New period balances are not shown yet.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
