@@ -63,7 +63,17 @@ void main() {
       LeaseGaugeApp(storage: store, trackingStore: trackingStore),
     );
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('+900 km'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('+900 km'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('expandOdometerStatus')),
+      -200,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Manual odometer'), findsOneWidget);
     await tester.tap(find.byKey(const Key('expandOdometerStatus')));
     await tester.pumpAndSettle();
@@ -87,9 +97,14 @@ void main() {
     );
     expect(find.text('+750 km'), findsOneWidget);
 
-    await tester.ensureVisible(find.byKey(const Key('quickOdometerField')));
-    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('quickOdometerField')),
+      -200,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.enterText(find.byKey(const Key('quickOdometerField')), '200');
+    await tester.ensureVisible(find.byKey(const Key('saveOdometerButton')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('saveOdometerButton')));
     await tester.pump();
     expect(store.values!.currentOdometerKm, 250);
@@ -141,6 +156,11 @@ void main() {
       find.descendant(of: dailyCard, matching: find.text('+30 km')),
       findsOneWidget,
     );
+    await tester.scrollUntilVisible(
+      find.text('+900 km'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('+900 km'), findsOneWidget);
     expect(
       find.text(
@@ -150,6 +170,42 @@ void main() {
     );
     expect(store.values!.currentOdometerKm, 100);
   });
+
+  testWidgets(
+    'new period comparison explains missing start without hiding suggestion',
+    (WidgetTester tester) async {
+      final store = _MemoryLeaseFormStore(
+        values: LeaseFormValues(
+          allowedDistanceKm: 1000,
+          startOdometerKm: 0,
+          currentOdometerKm: 100,
+          commuteDistanceKm: 0,
+          returnDate: DateTime.now().add(const Duration(days: 30)),
+          commuteWeekdays: const {},
+        ),
+      );
+      await tester.pumpWidget(
+        LeaseGaugeApp(
+          storage: store,
+          trackingStore: _MemoryPeriodTrackingStore(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('dailySuggestionCard')), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('periodComparisonCard')),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('Calendar period comparison · new'), findsOneWidget);
+      expect(
+        find.text('Missing start reading on this device.'),
+        findsNWidgets(3),
+      );
+      expect(store.values!.currentOdometerKm, 100);
+    },
+  );
 
   testWidgets('broken history does not prevent the old manual save', (
     WidgetTester tester,
@@ -316,6 +372,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.scrollUntilVisible(
+      find.text('+900 km'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('+900 km'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('No commute days'),

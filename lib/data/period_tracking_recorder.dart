@@ -14,6 +14,22 @@ String _planSignature(LeaseFormValues plan) => jsonEncode([
   plan.commuteWeekdays.toList()..sort(),
 ]);
 
+/// Select only the current car and unchanged plan terms for comparisons.
+PeriodTrackingSession? activeTrackingSession({
+  required List<PeriodTrackingSession> sessions,
+  required LeaseFormValues plan,
+  required String carKey,
+}) {
+  final signature = _planSignature(plan);
+  for (final session in sessions.reversed) {
+    if (session.baseline.carKey == carKey &&
+        session.baseline.planSignature == signature) {
+      return session;
+    }
+  }
+  return null;
+}
+
 /// Adds a successful manual reading without mutating existing history.
 /// A different plan revision or car always starts a separate series.
 List<PeriodTrackingSession> appendManualReading({
@@ -22,6 +38,50 @@ List<PeriodTrackingSession> appendManualReading({
   required String carKey,
   required double kilometers,
   required DateTime recordedAt,
+}) {
+  return _appendReading(
+    sessions: sessions,
+    plan: plan,
+    carKey: carKey,
+    kilometers: kilometers,
+    measuredAt: recordedAt,
+    receivedAt: recordedAt,
+    source: OdometerReadingSource.manual,
+  );
+}
+
+/// Records Volvo's measurement time, not the time of a repeated refresh.
+/// A stable vehicle ID is required so readings from two cars cannot mix.
+List<PeriodTrackingSession> appendVolvoReading({
+  required List<PeriodTrackingSession> sessions,
+  required LeaseFormValues plan,
+  required String vehicleId,
+  required double kilometers,
+  required DateTime measuredAt,
+  required DateTime receivedAt,
+}) {
+  if (vehicleId.isEmpty || measuredAt.isAfter(receivedAt)) {
+    throw const FormatException('Invalid Volvo measurement.');
+  }
+  return _appendReading(
+    sessions: sessions,
+    plan: plan,
+    carKey: 'volvo-id:$vehicleId',
+    kilometers: kilometers,
+    measuredAt: measuredAt,
+    receivedAt: receivedAt,
+    source: OdometerReadingSource.volvo,
+  );
+}
+
+List<PeriodTrackingSession> _appendReading({
+  required List<PeriodTrackingSession> sessions,
+  required LeaseFormValues plan,
+  required String carKey,
+  required double kilometers,
+  required DateTime measuredAt,
+  required DateTime receivedAt,
+  required OdometerReadingSource source,
 }) {
   if (carKey.isEmpty ||
       !kilometers.isFinite ||
@@ -32,9 +92,9 @@ List<PeriodTrackingSession> appendManualReading({
   final reading = DatedOdometerReading(
     carKey: carKey,
     kilometers: kilometers,
-    source: OdometerReadingSource.manual,
-    measuredAt: recordedAt,
-    receivedAt: recordedAt,
+    source: source,
+    measuredAt: measuredAt,
+    receivedAt: receivedAt,
   );
   final next = [...sessions];
   final index = next.lastIndexWhere(
@@ -45,10 +105,10 @@ List<PeriodTrackingSession> appendManualReading({
   if (index == -1) {
     next.add(
       PeriodTrackingSession(
-        id: recordedAt.toUtc().toIso8601String(),
+        id: '${receivedAt.toUtc().toIso8601String()}:$carKey',
         baseline: PeriodTrackingBaseline(
           carKey: carKey,
-          startedAt: recordedAt,
+          startedAt: receivedAt,
           odometerKm: kilometers,
           remainingContractKm:
               plan.allowedDistanceKm - (kilometers - plan.startOdometerKm),

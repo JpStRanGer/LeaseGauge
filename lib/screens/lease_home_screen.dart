@@ -46,6 +46,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
   String? _volvoMessage;
   DateTime? _volvoUpdatedAt;
   String? _selectedVolvoVehicleLabel;
+  String? _selectedVolvoVehicleId;
   VolvoConnectionClient? _volvoClient;
   VolvoPairing? _pairing;
   VolvoPairing? _phonePairing;
@@ -70,9 +71,27 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
         : plan.currentOdometerKm.toString();
   }
 
-  String get _manualCarKey => _selectedVolvoVehicleLabel == null
+  String get _manualCarKey => _selectedVolvoVehicleId == null
       ? 'manual-unassigned'
-      : 'volvo-label:${_selectedVolvoVehicleLabel!}';
+      : 'volvo-id:${_selectedVolvoVehicleId!}';
+
+  Future<void> _recordVolvoReading(
+    LeaseFormValues plan,
+    VolvoOdometer reading,
+    String vehicleId,
+  ) async {
+    if (_trackingError != null) return;
+    final next = appendVolvoReading(
+      sessions: _trackingSessions,
+      plan: plan,
+      vehicleId: vehicleId,
+      kilometers: reading.kilometers,
+      measuredAt: reading.vehicleUpdatedAt,
+      receivedAt: DateTime.now(),
+    );
+    await widget.trackingStore.save(next);
+    if (mounted) setState(() => _trackingSessions = next);
+  }
 
   Future<void> _recordManualReading(
     LeaseFormValues plan,
@@ -240,6 +259,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
           _volvoConnected = false;
           _volvoUpdatedAt = null;
           _selectedVolvoVehicleLabel = null;
+          _selectedVolvoVehicleId = null;
           _latestOdometerIsFromVolvo = false;
           if (!silent) {
             _volvoRefreshFeedback = _VolvoRefreshFeedback.idle;
@@ -273,6 +293,38 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
         if (!mounted) return;
         setState(() => _setPlan(updated));
         currentReadingIsFromVolvo = true;
+      }
+      // The odometer endpoint supplies a label, not a stable vehicle ID.
+      // Resolve the ID separately; never use a label to merge car histories.
+      String? vehicleId;
+      try {
+        final available = await client.readVehicles();
+        vehicleId =
+            available.selectedVehicleId ??
+            (available.vehicles.length == 1
+                ? available.vehicles.single.id
+                : null);
+        if (vehicleId != null &&
+            !available.vehicles.any((vehicle) => vehicle.id == vehicleId)) {
+          vehicleId = null;
+        }
+      } on Exception {
+        // The existing odometer flow must remain usable if history cannot
+        // safely identify the car.
+      }
+      if (!mounted) return;
+      setState(() => _selectedVolvoVehicleId = vehicleId);
+      if (vehicleId != null &&
+          (currentReadingIsFromVolvo || !lowerReading || !afterSelection)) {
+        try {
+          await _recordVolvoReading(_plan ?? plan, reading, vehicleId);
+        } on Exception {
+          if (mounted) {
+            setState(
+              () => _trackingError = 'Volvo updated the plan, but local period history could not be saved.',
+            );
+          }
+        }
       }
       setState(() {
         _volvoConnected = true;
@@ -399,7 +451,12 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
       );
       if (vehicle == null) return false;
       await client.selectVehicle(vehicle.id);
-      if (mounted) setState(() => _selectedVolvoVehicleLabel = vehicle.label);
+      if (mounted) {
+        setState(() {
+          _selectedVolvoVehicleLabel = vehicle.label;
+          _selectedVolvoVehicleId = vehicle.id;
+        });
+      }
       return true;
     } on Exception {
       if (mounted) {
@@ -597,6 +654,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
           _volvoConnected = false;
           _volvoUpdatedAt = null;
           _selectedVolvoVehicleLabel = null;
+          _selectedVolvoVehicleId = null;
           _latestOdometerIsFromVolvo = false;
           _manualOdometerEditing = false;
           _volvoRefreshFeedback = _VolvoRefreshFeedback.idle;
@@ -671,6 +729,26 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
             from: today,
             returnDate: plan!.returnDate,
           );
+    final trackingSession =
+        plan == null || (_volvoConnected && _selectedVolvoVehicleId == null)
+        ? null
+        : activeTrackingSession(
+            sessions: _trackingSessions,
+            plan: plan,
+            carKey: _manualCarKey,
+          );
+    final periodNow = DateTime.now();
+    final periodBudgets = trackingSession == null
+        ? null
+        : {
+            for (final period in BudgetPeriod.values)
+              period: calculatePeriodBudget(
+                baseline: trackingSession.baseline,
+                readings: trackingSession.readings,
+                now: periodNow,
+                period: period,
+              ),
+          };
     final collapseOdometer =
         !_odometerDetailsExpanded &&
         !_volvoBusy &&
@@ -1223,6 +1301,12 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                         value: _formatKm(budgets!.todayKm, signed: true),
                       ),
                       const SizedBox(height: 14),
+                      _PeriodComparisonCard(
+                        budgets: periodBudgets,
+                        historyError: _trackingError,
+                        formatKm: _formatKm,
+                      ),
+                      const SizedBox(height: 14),
                       _BalanceHero(
                         balance: _formatKm(budgets.totalKm, signed: true),
                         onTrack: budgets.totalKm >= 0,
@@ -1292,6 +1376,18 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                     (reading) =>
                                         reading.source ==
                                         OdometerReadingSource.manual,
+                                  )
+                                  .length,
+                        ),
+                        volvoReadingCount: _trackingSessions.fold<int>(
+                          0,
+                          (count, session) =>
+                              count +
+                              session.readings
+                                  .where(
+                                    (reading) =>
+                                        reading.source ==
+                                        OdometerReadingSource.volvo,
                                   )
                                   .length,
                         ),
@@ -1410,10 +1506,12 @@ class _EmptyPlan extends StatelessWidget {
 class _LocalTrackingCard extends StatelessWidget {
   const _LocalTrackingCard({
     required this.manualReadingCount,
+    required this.volvoReadingCount,
     required this.error,
   });
 
   final int manualReadingCount;
+  final int volvoReadingCount;
   final String? error;
 
   @override
@@ -1421,9 +1519,11 @@ class _LocalTrackingCard extends StatelessWidget {
     final theme = Theme.of(context);
     final message =
         error ??
-        (manualReadingCount == 0
-            ? 'No manual readings saved on this device yet.'
-            : '$manualReadingCount manual reading${manualReadingCount == 1 ? '' : 's'} saved on this device.');
+        (manualReadingCount == 0 && volvoReadingCount == 0
+            ? 'No readings saved on this device yet.'
+            : volvoReadingCount == 0
+            ? '$manualReadingCount manual reading${manualReadingCount == 1 ? '' : 's'} saved on this device.'
+            : '$manualReadingCount manual and $volvoReadingCount Volvo reading${volvoReadingCount == 1 ? '' : 's'} saved on this device.');
     return Card(
       key: const Key('localTrackingCard'),
       margin: EdgeInsets.zero,
@@ -1433,7 +1533,7 @@ class _LocalTrackingCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Local reading history · preview',
+              'Local reading history',
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
@@ -1442,11 +1542,108 @@ class _LocalTrackingCard extends StatelessWidget {
             Text(message),
             const SizedBox(height: 6),
             Text(
-              'This history stays on this device. New period balances are not shown yet.',
+              'This history stays on this device. Different cars and plan revisions are kept separate.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PeriodComparisonCard extends StatelessWidget {
+  const _PeriodComparisonCard({
+    required this.budgets,
+    required this.historyError,
+    required this.formatKm,
+  });
+
+  final Map<BudgetPeriod, PeriodBudget>? budgets;
+  final String? historyError;
+  final String Function(double, {bool signed}) formatKm;
+
+  String _periodName(BudgetPeriod period) => switch (period) {
+    BudgetPeriod.day => 'Today',
+    BudgetPeriod.week => 'This week',
+    BudgetPeriod.month => 'This month',
+  };
+
+  String _status(BudgetPeriod period, PeriodBudget? budget) {
+    if (historyError != null) return 'Local history is unavailable.';
+    if (budget == null) return 'Missing start reading on this device.';
+    return switch (budget.basis) {
+      PeriodBasis.measured =>
+        'Driven: ${formatKm(budget.drivenKm!)} · remaining as of the last reading:',
+      PeriodBasis.missingStart =>
+        'Missing start-of-${period.name} reading. A reading now cannot recreate the start.',
+      PeriodBasis.missingLatest =>
+        'A newer odometer reading is needed to measure this period.',
+      PeriodBasis.beforeTracking => 'Tracking has not started for this period.',
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      key: const Key('periodComparisonCard'),
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Calendar period comparison · new',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'These allowances cover all driving, including planned commutes. They are separate from the rolling leisure suggestions below.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            for (final period in BudgetPeriod.values) ...[
+              const Divider(height: 26),
+              Text(
+                _periodName(period),
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                budgets == null
+                    ? 'Assigned allowance: waiting for a local start reading'
+                    : 'Assigned allowance: ${formatKm(budgets![period]!.allowanceKm)}',
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _status(period, budgets?[period]),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              if (budgets?[period]?.basis == PeriodBasis.measured) ...[
+                const SizedBox(height: 4),
+                Text(
+                  formatKm(budgets![period]!.remainingKm!, signed: true),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  'Measured through ${MaterialLocalizations.of(context).formatMediumDate(budgets![period]!.measuredThrough!.toLocal())}, ${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(budgets![period]!.measuredThrough!.toLocal()), alwaysUse24HourFormat: true)}',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ],
           ],
         ),
       ),

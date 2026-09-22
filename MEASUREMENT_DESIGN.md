@@ -1,9 +1,9 @@
 # Measurement design before implementation
 
-Status: local storage and a pure calculation prototype are implemented on the
-redesign branch. They are not connected to the home screen or live readings.
-The missing-boundary rule and the commute-aware period allowance formula are
-approved; both still need in-app review through small test releases.
+Status: local storage and the pure calculation are connected to the home
+screen on the redesign branch. Manual and Volvo readings are captured locally;
+the new calendar comparison is available for in-app review. The
+missing-boundary rule and commute-aware allowance formula remain unchanged.
 The pre-redesign version is tag `pre-redesign-2026-09-22`.
 
 ## What the app knows today

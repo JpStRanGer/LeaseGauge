@@ -81,4 +81,48 @@ void main() {
       'volvo-label:car-b',
     ]);
   });
+
+  test(
+    'Volvo measurements use stable car IDs and repeated refreshes dedupe',
+    () {
+      final measured = DateTime.utc(2026, 9, 22, 12);
+      final first = appendVolvoReading(
+        sessions: [],
+        plan: plan,
+        vehicleId: 'vin-a',
+        kilometers: 250,
+        measuredAt: measured,
+        receivedAt: measured.add(const Duration(minutes: 5)),
+      );
+      final refreshed = appendVolvoReading(
+        sessions: first,
+        plan: plan,
+        vehicleId: 'vin-a',
+        kilometers: 250,
+        measuredAt: measured,
+        receivedAt: measured.add(const Duration(minutes: 10)),
+      );
+      final secondCar = appendVolvoReading(
+        sessions: refreshed,
+        plan: plan,
+        vehicleId: 'vin-b',
+        kilometers: 400,
+        measuredAt: measured,
+        receivedAt: measured.add(const Duration(minutes: 11)),
+      );
+
+      expect(refreshed.single.readings, hasLength(1));
+      expect(refreshed.single.readings.single.measuredAt, measured);
+      expect(secondCar, hasLength(2));
+      expect(secondCar.last.baseline.carKey, 'volvo-id:vin-b');
+      expect(
+        activeTrackingSession(
+          sessions: secondCar,
+          plan: plan,
+          carKey: 'volvo-id:vin-a',
+        )?.readings,
+        hasLength(1),
+      );
+    },
+  );
 }

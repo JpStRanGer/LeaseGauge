@@ -1,8 +1,8 @@
 # LeaseGauge: budget and home-screen redesign
 
-Status: working plan on `codex/leasegauge-redesign`. No existing release behavior
-has been changed by this document. See `MEASUREMENT_DESIGN.md` before changing
-budget calculations or reading storage.
+Status: comparison implementation on `codex/leasegauge-redesign`. Existing
+contract and rolling-leisure calculations remain unchanged. See
+`MEASUREMENT_DESIGN.md` before changing budget calculations or reading storage.
 
 ## Safe starting point
 
@@ -87,6 +87,23 @@ merge into `main` merely because a branch test passes.
 
 Each slice is separately reversible. The existing `main` and baseline tag
 remain untouched until the user reviews and approves a merge.
+
+## Current local test build
+
+- Manual readings and Volvo measurements are saved to device-local history.
+  Volvo uses the stable vehicle ID, and a repeated refresh of the same
+  measurement is ignored. If a car ID is unavailable, period history is not
+  silently attributed to another car.
+- A new calendar comparison shows assigned all-driving allowances for the
+  current day, week, and month. It shows a remaining balance only with a real
+  reading at the calendar boundary and a later reading from the same car.
+  Otherwise it explains which reading is missing. It never guesses a balance.
+- The existing prominent `Suggested today`, total contract balance and all
+  three rolling suggestions remain visible and use their original formula.
+- This is still a local test build, not a Play release or a merge into `main`.
+  A precise period balance will normally remain unavailable until a genuine
+  boundary reading has been captured. Whether to add an explicitly *partial*
+  period figure later is a separate design decision.
 
 ## Decisions to finish with the user
 
