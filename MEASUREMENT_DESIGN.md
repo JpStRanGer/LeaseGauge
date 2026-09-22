@@ -25,17 +25,20 @@ The pre-redesign version is tag `pre-redesign-2026-09-22`.
    leisure balance across the remaining calendar days. Preserve this function
    and expose its month/week/day values during comparison.
 3. **Period balance:** a new allowance for this calendar day/week/month, less
-   driving observed in that period. This needs dated readings and explicit
-   assumptions about commuting. It must carry a data-quality label.
+   **all** driving observed in that period. This is the user's initial choice.
+   It needs dated readings and carries a data-quality label.
 
 These are separate values. A negative day balance can coexist with positive
 total kilometres left until return.
 
 ## Proposed data model
 
-- `LeasePlan` has a stable plan ID, a lease start date, and a revision ID. An
-  edit to allowance, return date or commute schedule creates a new revision,
-  so old readings are not silently reinterpreted without notice.
+- A period-budget baseline has a stable plan ID, effective date, odometer,
+  remaining contract distance, return date and commute schedule. One simple
+  option is to start this baseline when the new feature is activated, because
+  the current app does not know the lease start date. An edit to allowance,
+  return date or commute schedule creates a new revision, so old readings are
+  not silently reinterpreted without notice.
 - `OdometerReading` is an immutable record with plan ID, car ID when known,
   kilometres, source (`manual` or `Volvo`), `measuredAt`, and `receivedAt`.
   Save both times in UTC; use the user's local calendar zone for day/week/month.
@@ -61,15 +64,29 @@ total kilometres left until return.
 - While the basis is missing, the UI shows the existing rolling `Suggested
   today` value **and** `Missing start-of-day reading`. This also applies to
   week and month. Existing numbers never disappear during the redesign.
-- Workday commuting is a planned reserve, not proof of where the car went.
-  Any subtraction of presumed commuting from observed odometer distance must
-  be labelled an estimate. We should not call that measured leisure driving.
+- The new balance subtracts the **whole odometer change**. It never guesses
+  which kilometres were commuting. The existing leisure calculation continues
+  to reserve planned commuting separately.
+
+## Candidate period allowance formula
+
+At the chosen measurement start, take the remaining *contract* distance. For
+each remaining calendar day, assign an even share of distance beyond planned
+commuting, plus that day's planned commute distance. Thus a planned commute
+day receives more total-driving room than a non-commute day, and all assigned
+days add up to the remaining contract distance. A week/month allowance is the
+sum of its days. Subtract the total odometer increase in that period, with no
+attempt to classify individual trips.
+
+This is a proposal, not an implemented or approved formula. In particular,
+the first partial day/week/month has no historic start reading and must show
+its missing basis alongside the existing rolling suggestion.
 
 ## Questions that affect the formula or storage
 
-1. Do users know their lease start date? Adding it as an optional field lets
-   us divide the contract allowance over the actual lease calendar. Existing
-   plans could leave it empty and continue using only the rolling suggestion.
+1. Should the new period baseline begin when tracking is enabled, with no new
+   input and no invented history, or should users enter the actual lease start
+   date? The latter still cannot reconstruct old boundary odometer readings.
 2. If the car is not read at midnight, should the new period balance show a
    clearly marked approximation based on nearby readings, or remain unknown?
    The rolling suggestion remains visible either way.
@@ -77,9 +94,6 @@ total kilometres left until return.
    simplest but can produce different period results on the two devices.
    Shared history requires a deliberate server and account design, especially
    for users who enter readings manually without connecting Volvo.
-4. Should the new period balance use total driving, or estimated leisure
-   driving after subtracting planned commuting? The latter matches the
-   existing leisure theme but cannot be verified from odometer alone.
 
 ## Verification before replacing any presentation
 

@@ -34,9 +34,11 @@ period figures beside them for comparison. Do not replace or delete a legacy
 figure while the new interpretation is being tested.
 
 The proposed new period cards show: allowance assigned to this calendar
-month/week/day, less leisure driving within that period. The total remaining
-until return stays a separate figure. Negative period balances mean the user
-is over that period's allowance; they do not mean the whole lease is exhausted.
+month/week/day, less **all driving** within that period. This is the user's
+initial choice for the redesign. The existing leisure balance and rolling
+leisure suggestions remain alongside these new numbers. Negative period
+balances mean the user is over that period's allowance; they do not mean the
+whole lease is exhausted.
 
 To calculate a period balance, we need a starting date, an odometer reading
 at the start of the period, and a later reading. The app currently persists
@@ -50,8 +52,8 @@ The same principle applies to week and month. Neither message hides the other.
 
 ## Proposed implementation sequence
 
-1. Define the period rules and data model: lease start, dated readings, and
-   clear handling of missing boundary readings and planned commuting.
+1. Define the period rules and data model: measurement start, dated readings,
+   and clear handling of missing boundary readings and planned commuting.
 2. Implement and test the calculation independently of the UI, including
    month/week changes, negative balances, missed readings, and car changes.
 3. Persist readings locally without losing existing plans. Show an honest
