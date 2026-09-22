@@ -53,6 +53,7 @@ histories.
 When a period-start reading is missing, show both the existing, clearly
 labelled `Suggested today` figure and a `Missing start-of-day reading` status.
 The same principle applies to week and month. Neither message hides the other.
+This is approved: do not estimate a missing start reading from nearby data.
 Manual readings update the existing total and rolling calculations exactly as
 before. They become timestamped local readings for the new calculation, but a
 value entered during the day is not retroactively a midnight reading. Only the
@@ -78,5 +79,5 @@ with a plain explanation. We will not require manual date/time entry yet.
 
 - Should the optional personal comparison be shown automatically when useful,
   or behind a `What does this mean?` action?
-- How should an incomplete day/week/month be credited when we have readings
-  near, but not at, its start? The measurement design describes the options.
+- Should the fixed total-driving budget be even per day, or higher on planned
+  commute days? The prototype uses the latter; it still needs approval.

@@ -2,7 +2,8 @@
 
 Status: local storage and a pure calculation prototype are implemented on the
 redesign branch. They are not connected to the home screen or live readings.
-The period formula and missing-boundary presentation still need in-app review.
+The missing-boundary rule is approved; the period allowance formula still
+needs approval and in-app review.
 The pre-redesign version is tag `pre-redesign-2026-09-22`.
 
 ## What the app knows today
@@ -71,9 +72,10 @@ total kilometres left until return.
 - Prefer a reading at the period boundary. If none exists, we cannot know
   precisely how many kilometres were driven after that boundary. Merely
   collecting more readings later does not reconstruct the missing boundary.
-- The new period result therefore says either `measured`, `estimated`, or
-  `missing basis`. A result must state the readings and assumptions that led
-  to it. No guessed value receives the `measured` label.
+- The new period result says `measured` or `missing basis`. Do not estimate a
+  missing boundary reading or infer a period balance from later readings.
+  This is the user's approved choice. A result must state the readings and
+  assumptions that led to it.
 - A measured balance is **as of the latest odometer measurement**, not
   necessarily as of the current minute. Show that measurement time alongside
   the number, especially for a manual entry.
@@ -105,9 +107,10 @@ its missing basis alongside the existing rolling suggestion.
 
 ## Questions that affect the formula or storage
 
-1. If the car is not read at midnight, should the new period balance show a
-   clearly marked approximation based on nearby readings, or remain unknown?
-   The rolling suggestion remains visible either way.
+1. Decide whether the fixed total-driving allowance is shared equally across
+   all remaining days, or whether planned commute days get additional room.
+   The current prototype implements the latter, but the user has not yet
+   approved this formula.
 
 Local history means phone and car can produce different period results. This
 is an intentional consequence of keeping the feature entirely on-device.
