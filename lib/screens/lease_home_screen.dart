@@ -8,6 +8,7 @@ import 'package:leasegauge/data/volvo_connection_client.dart';
 import 'package:leasegauge/domain/lease_calculator.dart';
 import 'package:leasegauge/domain/period_tracking.dart';
 import 'package:leasegauge/screens/lease_setup_screen.dart';
+import 'package:leasegauge/screens/feedback_screen.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -1448,6 +1449,20 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                         ),
                       ),
                     ],
+                    const SizedBox(height: 20),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        key: const Key('openFeedbackButton'),
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const FeedbackScreen(),
+                          ),
+                        ),
+                        icon: const Icon(Icons.feedback_outlined),
+                        label: const Text('Send feedback'),
+                      ),
+                    ),
                   ],
                 ),
               ),

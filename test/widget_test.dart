@@ -171,6 +171,27 @@ void main() {
     expect(store.values!.currentOdometerKm, 100);
   });
 
+  testWidgets('feedback stays discreet and opens a separate form', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      LeaseGaugeApp(
+        storage: _MemoryLeaseFormStore(),
+        trackingStore: _MemoryPeriodTrackingStore(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('openFeedbackButton')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const Key('openFeedbackButton')));
+    await tester.pumpAndSettle();
+    expect(find.text('Tell us what could be better'), findsOneWidget);
+    expect(find.byKey(const Key('feedbackMessage')), findsOneWidget);
+  });
+
   testWidgets(
     'new period comparison explains missing start without hiding suggestion',
     (WidgetTester tester) async {
