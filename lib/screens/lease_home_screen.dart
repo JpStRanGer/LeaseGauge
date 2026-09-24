@@ -49,6 +49,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
   DateTime? _volvoUpdatedAt;
   String? _selectedVolvoVehicleLabel;
   String? _selectedVolvoVehicleId;
+  int? _volvoVehicleCount;
   VolvoConnectionClient? _volvoClient;
   VolvoPairing? _pairing;
   VolvoPairing? _phonePairing;
@@ -262,6 +263,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
           _volvoUpdatedAt = null;
           _selectedVolvoVehicleLabel = null;
           _selectedVolvoVehicleId = null;
+          _volvoVehicleCount = null;
           _latestOdometerIsFromVolvo = false;
           if (!silent) {
             _volvoRefreshFeedback = _VolvoRefreshFeedback.idle;
@@ -299,8 +301,10 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
       // The odometer endpoint supplies a label, not a stable vehicle ID.
       // Resolve the ID separately; never use a label to merge car histories.
       String? vehicleId;
+      int? vehicleCount;
       try {
         final available = await client.readVehicles();
+        vehicleCount = available.vehicles.length;
         vehicleId =
             available.selectedVehicleId ??
             (available.vehicles.length == 1
@@ -315,7 +319,10 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
         // safely identify the car.
       }
       if (!mounted) return;
-      setState(() => _selectedVolvoVehicleId = vehicleId);
+      setState(() {
+        _selectedVolvoVehicleId = vehicleId;
+        _volvoVehicleCount = vehicleCount;
+      });
       if (vehicleId != null &&
           (currentReadingIsFromVolvo || !lowerReading || !afterSelection)) {
         try {
@@ -409,6 +416,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
     try {
       final available = await client.readVehicles();
       if (!mounted) return false;
+      setState(() => _volvoVehicleCount = available.vehicles.length);
       if (available.vehicles.isEmpty) {
         _showVolvoMessage('No Volvo vehicles are available for this account.');
         return false;
@@ -657,6 +665,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
           _volvoUpdatedAt = null;
           _selectedVolvoVehicleLabel = null;
           _selectedVolvoVehicleId = null;
+          _volvoVehicleCount = null;
           _latestOdometerIsFromVolvo = false;
           _manualOdometerEditing = false;
           _volvoRefreshFeedback = _VolvoRefreshFeedback.idle;
@@ -1021,7 +1030,8 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                             label: const Text('Disconnect'),
                                           ),
                                         ),
-                                      if (_volvoConnected)
+                                      if (_volvoConnected &&
+                                          (_volvoVehicleCount ?? 0) > 1)
                                         SizedBox(
                                           width: 156,
                                           child: OutlinedButton.icon(
