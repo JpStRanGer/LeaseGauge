@@ -174,19 +174,57 @@ void main() {
       find.descendant(of: dailyCard, matching: find.text('+30 km')),
       findsOneWidget,
     );
-    await tester.scrollUntilVisible(
-      find.text('+900 km'),
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.text('+900 km'), findsOneWidget);
     expect(
       find.text(
         'A rolling share of your remaining leisure kilometres. This is not a measured balance for today.',
       ),
       findsOneWidget,
     );
+    await tester.scrollUntilVisible(
+      find.text('+900 km'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('+900 km'), findsOneWidget);
     expect(store.values!.currentOdometerKm, 100);
+  });
+
+  testWidgets('information cards explain their data in a help dialog', (
+    WidgetTester tester,
+  ) async {
+    final store = _MemoryLeaseFormStore()
+      ..values = LeaseFormValues(
+        allowedDistanceKm: 36000,
+        startOdometerKm: 0,
+        currentOdometerKm: 100,
+        commuteDistanceKm: 0,
+        returnDate: DateTime(2027, 2, 1),
+        commuteWeekdays: const <int>{},
+      );
+    await tester.pumpWidget(
+      LeaseGaugeApp(
+        legalStore: _AcceptedLegalStore(),
+        storage: store,
+        trackingStore: _MemoryPeriodTrackingStore(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final helpButton = find.byKey(const Key('dailySuggestionHelpButton'));
+    expect(helpButton, findsOneWidget);
+    await tester.tap(helpButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('How it is calculated'), findsOneWidget);
+    expect(
+      find.text(
+        'This is a planning suggestion for leisure driving today, not a measurement of what you have driven today.',
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Close'));
+    await tester.pumpAndSettle();
+    expect(find.text('How it is calculated'), findsNothing);
   });
 
   testWidgets('feedback stays discreet and opens a separate form', (

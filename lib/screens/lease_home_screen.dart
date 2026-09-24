@@ -7,6 +7,7 @@ import 'package:leasegauge/data/period_tracking_recorder.dart';
 import 'package:leasegauge/data/volvo_connection_client.dart';
 import 'package:leasegauge/domain/lease_calculator.dart';
 import 'package:leasegauge/domain/period_tracking.dart';
+import 'package:leasegauge/widgets/info_help_button.dart';
 import 'package:leasegauge/screens/lease_setup_screen.dart';
 import 'package:leasegauge/screens/feedback_screen.dart';
 import 'package:leasegauge/screens/legal_gate.dart';
@@ -886,6 +887,25 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                     ),
                                   ),
                                   const SizedBox(width: 8),
+                                  const InfoHelpButton(
+                                    key: Key('odometerHelpButton'),
+                                    title: 'Current odometer',
+                                    introduction: 'This is the odometer reading LeaseGauge currently uses in every mileage calculation.',
+                                    items: [
+                                      InfoHelpItem(
+                                        heading: 'Where it comes from',
+                                        description: 'A connected Volvo can supply the reading automatically. Otherwise, you enter and save it manually.',
+                                      ),
+                                      InfoHelpItem(
+                                        heading: 'Manual changes',
+                                        description: 'A manual reading changes LeaseGauge only. It never changes the value stored in your car.',
+                                      ),
+                                      InfoHelpItem(
+                                        heading: 'How to use it',
+                                        description: 'Keep this reading current. All remaining-distance and period figures depend on it.',
+                                      ),
+                                    ],
+                                  ),
                                   const Text('Show'),
                                   const Icon(Icons.expand_more_rounded),
                                 ],
@@ -925,6 +945,25 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                                 fontWeight: FontWeight.w700,
                                               ),
                                         ),
+                                      ),
+                                      const InfoHelpButton(
+                                        key: Key('odometerHelpButton'),
+                                        title: 'Current odometer',
+                                        introduction: 'This is the odometer reading LeaseGauge currently uses in every mileage calculation.',
+                                        items: [
+                                          InfoHelpItem(
+                                            heading: 'Automatic reading',
+                                            description: 'When Volvo is connected, LeaseGauge checks the selected car when the app starts and when you choose Update from Volvo.',
+                                          ),
+                                          InfoHelpItem(
+                                            heading: 'Manual reading',
+                                            description: 'You can still enter a value yourself. It changes LeaseGauge only and does not change your car.',
+                                          ),
+                                          InfoHelpItem(
+                                            heading: 'Why it matters',
+                                            description: 'The newest saved reading is the starting point for the remaining-distance and period calculations.',
+                                          ),
+                                        ],
                                       ),
                                       IconButton(
                                         tooltip: 'Hide odometer details',
@@ -1406,10 +1445,35 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                         error: _trackingError,
                       ),
                       const SizedBox(height: 26),
-                      Text(
-                        'Lease snapshot',
-                        style: Theme.of(context).textTheme.titleLarge
-                            ?.copyWith(fontWeight: FontWeight.w700),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Lease snapshot',
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                          const InfoHelpButton(
+                            key: Key('leaseSnapshotHelpButton'),
+                            title: 'Lease snapshot',
+                            introduction: 'This is a summary of the lease details and calculated distances LeaseGauge is currently using.',
+                            items: [
+                              InfoHelpItem(
+                                heading: 'Contract figures',
+                                description: 'The allowance, starting odometer, commute plan and return date come from the plan you saved.',
+                              ),
+                              InfoHelpItem(
+                                heading: 'Calculated figures',
+                                description: 'Already driven, remaining distance and the commute reserve are recalculated from your latest saved odometer reading.',
+                              ),
+                              InfoHelpItem(
+                                heading: 'If something looks wrong',
+                                description: 'Check the current odometer and choose Edit plan to review the contract details.',
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 14),
                       Card(
@@ -1560,11 +1624,36 @@ class _LocalTrackingCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Local reading history',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Local reading history',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const InfoHelpButton(
+                  key: Key('localTrackingHelpButton'),
+                  title: 'Local reading history',
+                  introduction: 'LeaseGauge keeps a small history of odometer readings on this device so it can measure driving within calendar periods.',
+                  items: [
+                    InfoHelpItem(
+                      heading: 'Stored only here',
+                      description: 'This history is not uploaded or synchronized. Another phone, browser or car installation can therefore have a different history.',
+                    ),
+                    InfoHelpItem(
+                      heading: 'Why readings are needed',
+                      description: 'A reading near the start of a period and a newer reading let LeaseGauge calculate how far you actually drove.',
+                    ),
+                    InfoHelpItem(
+                      heading: 'Kept separate',
+                      description: 'Different cars and substantial plan revisions use separate histories so their measurements are not mixed.',
+                    ),
+                  ],
+                ),
+              ],
             ),
             const SizedBox(height: 8),
             Text(message),
@@ -1624,11 +1713,36 @@ class _PeriodComparisonCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Calendar period comparison · new',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Calendar period comparison · new',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const InfoHelpButton(
+                  key: Key('periodComparisonHelpButton'),
+                  title: 'Calendar period comparison',
+                  introduction: 'This compares an allowance for the current day, week and month with the distance actually measured in that period.',
+                  items: [
+                    InfoHelpItem(
+                      heading: 'What is included',
+                      description: 'These period figures cover all driving, including commuting. They are not the same as the leisure-only suggestions.',
+                    ),
+                    InfoHelpItem(
+                      heading: 'How measurement works',
+                      description: 'LeaseGauge needs a local odometer reading from the start of the period and a newer reading. If either is missing, the app explains what data is needed.',
+                    ),
+                    InfoHelpItem(
+                      heading: 'Reading the result',
+                      description: 'A positive remaining value means the measured driving is below the assigned allowance. A negative value means it is above it.',
+                    ),
+                  ],
+                ),
+              ],
             ),
             const SizedBox(height: 6),
             Text(
@@ -1696,12 +1810,37 @@ class _DailySuggestionCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Suggested today',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: theme.colorScheme.primary,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Suggested today',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ),
+                const InfoHelpButton(
+                  key: Key('dailySuggestionHelpButton'),
+                  title: 'Suggested today',
+                  introduction: 'This is a planning suggestion for leisure driving today, not a measurement of what you have driven today.',
+                  items: [
+                    InfoHelpItem(
+                      heading: 'How it is calculated',
+                      description: 'LeaseGauge first reserves distance for the commutes in your plan. It then spreads the remaining leisure distance evenly across the calendar days left in the lease.',
+                    ),
+                    InfoHelpItem(
+                      heading: 'How to read it',
+                      description: 'A positive number is the suggested room available today. A negative number means the plan is already over its calculated leisure allowance.',
+                    ),
+                    InfoHelpItem(
+                      heading: 'It changes over time',
+                      description: 'The suggestion is recalculated whenever the saved odometer or plan changes.',
+                    ),
+                  ],
+                ),
+              ],
             ),
             const SizedBox(height: 10),
             FittedBox(
@@ -1756,10 +1895,35 @@ class _BalanceHero extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(
-              Icons.directions_car_filled_rounded,
-              color: Color(0xFFB8F0E7),
-              size: 32,
+            Row(
+              children: [
+                const Icon(
+                  Icons.directions_car_filled_rounded,
+                  color: Color(0xFFB8F0E7),
+                  size: 32,
+                ),
+                const Spacer(),
+                const InfoHelpButton(
+                  key: Key('balanceHelpButton'),
+                  title: 'Leisure distance left',
+                  introduction: 'This is the estimated distance available for non-commute driving until the car is returned.',
+                  iconColor: Color(0xFFE5F5F4),
+                  items: [
+                    InfoHelpItem(
+                      heading: 'How it is calculated',
+                      description: 'LeaseGauge takes the contract distance still available and subtracts the distance reserved for your planned commutes.',
+                    ),
+                    InfoHelpItem(
+                      heading: 'Positive or negative',
+                      description: 'A positive value is available beyond the planned commuting. A negative value means the current plan exceeds the contract allowance.',
+                    ),
+                    InfoHelpItem(
+                      heading: 'This is an estimate',
+                      description: 'The result depends on the saved odometer, commute schedule and contract details being correct.',
+                    ),
+                  ],
+                ),
+              ],
             ),
             const SizedBox(height: 26),
             const Text(
@@ -1831,7 +1995,31 @@ class _BudgetTile extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, color: Theme.of(context).colorScheme.primary),
+              Row(
+                children: [
+                  Icon(icon, color: Theme.of(context).colorScheme.primary),
+                  const Spacer(),
+                  InfoHelpButton(
+                    key: ValueKey('rollingBudgetHelpButton-$label'),
+                    title: label,
+                    introduction: 'This is a rolling leisure-driving suggestion for the named period. It is not a measurement of driving during that period.',
+                    items: const [
+                      InfoHelpItem(
+                        heading: 'How it is calculated',
+                        description: 'LeaseGauge reserves planned commuting, divides the remaining leisure distance across the calendar days left in the lease, and adds the relevant days in this period.',
+                      ),
+                      InfoHelpItem(
+                        heading: 'How to read it',
+                        description: 'A positive number suggests room for leisure driving. A negative number means the calculated leisure plan is over its allowance.',
+                      ),
+                      InfoHelpItem(
+                        heading: 'Why it moves',
+                        description: 'The value is recalculated from the newest saved odometer and is not preserved as a historical period balance.',
+                      ),
+                    ],
+                  ),
+                ],
+              ),
               const SizedBox(height: 18),
               Text(
                 label,
