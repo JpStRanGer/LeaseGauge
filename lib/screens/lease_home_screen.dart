@@ -1350,12 +1350,14 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                       const SizedBox(height: 18),
                       _DailySuggestionCard(
                         value: _formatKm(budgets!.todayKm, signed: true),
+                        resetAt: _periodResetAt(periodNow, BudgetPeriod.day),
                       ),
                       const SizedBox(height: 14),
                       _PeriodComparisonCard(
                         budgets: periodBudgets,
                         historyError: _trackingError,
                         formatKm: _formatKm,
+                        now: periodNow,
                       ),
                       const SizedBox(height: 14),
                       _BalanceHero(
@@ -1396,6 +1398,10 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                   budgets.currentMonthKm,
                                   signed: true,
                                 ),
+                                resetAt: _periodResetAt(
+                                  periodNow,
+                                  BudgetPeriod.month,
+                                ),
                               ),
                               _BudgetTile(
                                 width: cardWidth,
@@ -1405,12 +1411,20 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                   budgets.currentWeekKm,
                                   signed: true,
                                 ),
+                                resetAt: _periodResetAt(
+                                  periodNow,
+                                  BudgetPeriod.week,
+                                ),
                               ),
                               _BudgetTile(
                                 width: cardWidth,
                                 icon: Icons.today_rounded,
                                 label: 'Suggested today',
                                 value: _formatKm(budgets.todayKm, signed: true),
+                                resetAt: _periodResetAt(
+                                  periodNow,
+                                  BudgetPeriod.day,
+                                ),
                               ),
                             ],
                           );
@@ -1676,11 +1690,13 @@ class _PeriodComparisonCard extends StatelessWidget {
     required this.budgets,
     required this.historyError,
     required this.formatKm,
+    required this.now,
   });
 
   final Map<BudgetPeriod, PeriodBudget>? budgets;
   final String? historyError;
   final String Function(double, {bool signed}) formatKm;
+  final DateTime now;
 
   String _periodName(BudgetPeriod period) => switch (period) {
     BudgetPeriod.day => 'Today',
@@ -1759,6 +1775,14 @@ class _PeriodComparisonCard extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                 ),
               ),
+              const SizedBox(height: 2),
+              Text(
+                _periodTimingLabel(context, _periodResetAt(now, period)),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(height: 4),
               Text(
                 budgets == null
@@ -1794,9 +1818,10 @@ class _PeriodComparisonCard extends StatelessWidget {
 }
 
 class _DailySuggestionCard extends StatelessWidget {
-  const _DailySuggestionCard({required this.value});
+  const _DailySuggestionCard({required this.value, required this.resetAt});
 
   final String value;
+  final DateTime resetAt;
 
   @override
   Widget build(BuildContext context) {
@@ -1852,6 +1877,14 @@ class _DailySuggestionCard extends StatelessWidget {
                   fontWeight: FontWeight.w800,
                   color: theme.colorScheme.onSurface,
                 ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _periodTimingLabel(context, resetAt),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 8),
@@ -1977,12 +2010,14 @@ class _BudgetTile extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
+    required this.resetAt,
   });
 
   final double width;
   final IconData icon;
   final String label;
   final String value;
+  final DateTime resetAt;
 
   @override
   Widget build(BuildContext context) {
@@ -2033,12 +2068,39 @@ class _BudgetTile extends StatelessWidget {
                 style: Theme.of(context).textTheme.headlineSmall
                     ?.copyWith(fontWeight: FontWeight.w800),
               ),
+              const SizedBox(height: 8),
+              Text(
+                _periodTimingLabel(context, resetAt),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ),
       ),
     );
   }
+}
+
+DateTime _periodResetAt(DateTime now, BudgetPeriod period) => switch (period) {
+  BudgetPeriod.day => DateTime(now.year, now.month, now.day + 1),
+  BudgetPeriod.week => DateTime(
+    now.year,
+    now.month,
+    now.day + (DateTime.daysPerWeek - now.weekday + 1),
+  ),
+  BudgetPeriod.month => DateTime(now.year, now.month + 1),
+};
+
+String _periodTimingLabel(BuildContext context, DateTime resetAt) {
+  final localizations = MaterialLocalizations.of(context);
+  final through = resetAt.subtract(const Duration(minutes: 1));
+  String dateAndTime(DateTime value) =>
+      '${localizations.formatMediumDate(value)}, '
+      '${localizations.formatTimeOfDay(TimeOfDay.fromDateTime(value), alwaysUse24HourFormat: true)}';
+  return 'Calculated through ${dateAndTime(through)} · resets ${dateAndTime(resetAt)}';
 }
 
 class _DetailRow extends StatelessWidget {

@@ -175,6 +175,17 @@ void main() {
       findsOneWidget,
     );
     expect(
+      find.descendant(
+        of: dailyCard,
+        matching: find.textContaining('Calculated through'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: dailyCard, matching: find.textContaining('resets')),
+      findsOneWidget,
+    );
+    expect(
       find.text(
         'A rolling share of your remaining leisure kilometres. This is not a measured balance for today.',
       ),
