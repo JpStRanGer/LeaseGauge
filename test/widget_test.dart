@@ -189,6 +189,22 @@ void main() {
       find.textContaining('Driving before the first reading is not included.'),
       findsNWidgets(3),
     );
+    for (final period in ['day', 'week', 'month']) {
+      expect(
+        find.byKey(ValueKey('periodUsedDistanceBar-$period')),
+        findsOneWidget,
+      );
+    }
+    expect(find.textContaining('50 km /'), findsNWidgets(3));
+    final dailyUsageBar = find.descendant(
+      of: find.byKey(const ValueKey('periodUsedDistanceBar-day')),
+      matching: find.byType(LinearProgressIndicator),
+    );
+    expect(tester.widget<LinearProgressIndicator>(dailyUsageBar).value, 1);
+    expect(
+      tester.widget<LinearProgressIndicator>(dailyUsageBar).color,
+      const Color(0xFFB3261E),
+    );
     expect(store.values!.currentOdometerKm, 200);
   });
 

@@ -1807,6 +1807,10 @@ class _PeriodComparisonCard extends StatelessWidget {
                       heading: 'How measurement works',
                       description: 'The first local reading starts the measurement with zero recorded driving and the full allowance available. Later readings subtract only the distance actually recorded after that starting point. LeaseGauge does not guess or subtract driving from before the first reading.',
                     ),
+                    const InfoHelpItem(
+                      heading: 'The used-distance bar',
+                      description: 'The bar compares recorded driving with the fixed allowance for the period. A full red bar means the recorded driving has reached or exceeded the allowance. For a partial measurement, the bar only includes driving after the first local reading.',
+                    ),
                     InfoHelpItem(
                       heading: 'Today’s actual calculation',
                       description: todayCalculation,
@@ -1855,6 +1859,12 @@ class _PeriodComparisonCard extends StatelessWidget {
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
+              const SizedBox(height: 10),
+              _PeriodUsedDistanceBar(
+                key: ValueKey('periodUsedDistanceBar-${period.name}'),
+                budget: budgets?[period],
+                formatKm: formatKm,
+              ),
               if (budgets?[period]?.basis == PeriodBasis.measured) ...[
                 const SizedBox(height: 4),
                 Text(
@@ -1892,6 +1902,81 @@ class _PeriodComparisonCard extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _PeriodUsedDistanceBar extends StatelessWidget {
+  const _PeriodUsedDistanceBar({
+    super.key,
+    required this.budget,
+    required this.formatKm,
+  });
+
+  final PeriodBudget? budget;
+  final String Function(double, {bool signed}) formatKm;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final driven = budget?.drivenKm;
+    final allowance = budget?.allowanceKm;
+    final hasMeasurement = driven != null && allowance != null;
+    final isOver =
+        hasMeasurement && (allowance <= 0 ? driven > 0 : driven > allowance);
+    final progress = !hasMeasurement
+        ? 0.0
+        : allowance > 0
+        ? (driven / allowance).clamp(0.0, 1.0).toDouble()
+        : driven > 0
+        ? 1.0
+        : 0.0;
+    final valueLabel = hasMeasurement
+        ? '${formatKm(driven)} / ${formatKm(allowance)}'
+        : 'Waiting for readings';
+    final barColor = isOver ? _negativeValueColor : theme.colorScheme.primary;
+
+    return Semantics(
+      label: 'Recorded driving compared with the period allowance',
+      value: valueLabel,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Recorded driving',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Text(
+                valueLabel,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: hasMeasurement
+                      ? (isOver
+                            ? _negativeValueColor
+                            : theme.colorScheme.onSurfaceVariant)
+                      : theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(99),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 8,
+              color: barColor,
+              backgroundColor: theme.colorScheme.surfaceContainerHighest,
+            ),
+          ),
+        ],
       ),
     );
   }
