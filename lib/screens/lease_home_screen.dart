@@ -1722,7 +1722,7 @@ class _PeriodComparisonCard extends StatelessWidget {
       PeriodBasis.measured =>
         'Driven: ${formatKm(budget.drivenKm!)} · remaining as of the last reading:',
       PeriodBasis.partialMeasured =>
-        'Partial measurement: ${formatKm(budget.drivenKm!)} driven since ${_measurementTime(context, budget.measuredFrom!)}. An exact whole-period balance needs a reading at the period start.',
+        'Recorded driving since ${_measurementTime(context, budget.measuredFrom!)}: ${formatKm(budget.drivenKm!)} · remaining after recorded driving:',
       PeriodBasis.missingStart =>
         'Add a reading to start measuring from now. The app will clearly mark it as a partial ${period.name} measurement.',
       PeriodBasis.missingLatest =>
@@ -1767,7 +1767,7 @@ class _PeriodComparisonCard extends StatelessWidget {
                     ),
                     InfoHelpItem(
                       heading: 'How measurement works',
-                      description: 'The first local reading becomes a safe starting point. A later reading shows the distance driven since then. If the first reading was after the calendar period began, LeaseGauge labels the result as partial instead of pretending it covers the whole period.',
+                      description: 'The first local reading starts the measurement with zero recorded driving and the full allowance available. Later readings subtract only the distance actually recorded after that starting point. LeaseGauge does not guess or subtract driving from before the first reading.',
                     ),
                     InfoHelpItem(
                       heading: 'Reading the result',
@@ -1829,7 +1829,13 @@ class _PeriodComparisonCard extends StatelessWidget {
                   PeriodBasis.partialMeasured) ...[
                 const SizedBox(height: 4),
                 Text(
-                  'Measured through ${_measurementTime(context, budgets![period]!.measuredThrough!)}',
+                  formatKm(budgets![period]!.remainingKm!, signed: true),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  'Covers recorded driving from ${_measurementTime(context, budgets![period]!.measuredFrom!)} through ${_measurementTime(context, budgets![period]!.measuredThrough!)}. Driving before the first reading is not included.',
                   style: theme.textTheme.bodySmall,
                 ),
               ],

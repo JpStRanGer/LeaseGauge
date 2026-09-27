@@ -85,7 +85,7 @@ void main() {
     expect(result.basis, PeriodBasis.missingStart);
   });
 
-  test('a daytime manual entry becomes an honest partial start', () {
+  test('a daytime manual entry starts with the full allowance', () {
     final manual = DatedOdometerReading(
       carKey: 'car-a',
       kilometers: 1020,
@@ -100,10 +100,11 @@ void main() {
       period: BudgetPeriod.day,
     );
     expect(result.allowanceKm, 20);
-    expect(result.basis, PeriodBasis.missingLatest);
-    expect(result.drivenKm, isNull);
-    expect(result.remainingKm, isNull);
+    expect(result.basis, PeriodBasis.partialMeasured);
+    expect(result.drivenKm, 0);
+    expect(result.remainingKm, 20);
     expect(result.measuredFrom, manual.measuredAt);
+    expect(result.measuredThrough, manual.measuredAt);
   });
 
   test('two daytime readings produce a partial measured distance', () {
@@ -129,7 +130,7 @@ void main() {
     );
     expect(result.basis, PeriodBasis.partialMeasured);
     expect(result.drivenKm, 8);
-    expect(result.remainingKm, isNull);
+    expect(result.remainingKm, 12);
     expect(result.measuredFrom, first.measuredAt);
     expect(result.measuredThrough, latest.measuredAt);
   });

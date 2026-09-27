@@ -184,14 +184,9 @@ void main() {
       200,
       scrollable: find.byType(Scrollable).first,
     );
+    expect(find.textContaining('Recorded driving since'), findsNWidgets(3));
     expect(
-      find.textContaining('Partial measurement: 50 km driven since'),
-      findsNWidgets(3),
-    );
-    expect(
-      find.textContaining(
-        'An exact whole-period balance needs a reading at the period start.',
-      ),
+      find.textContaining('Driving before the first reading is not included.'),
       findsNWidgets(3),
     );
     expect(store.values!.currentOdometerKm, 200);

@@ -196,7 +196,7 @@ PeriodBudget calculatePeriodBudget({
       basis: PeriodBasis.missingStart,
     );
   }
-  if (latest == null || latest.measuredAt.isAtSameMomentAs(first.measuredAt)) {
+  if (latest == null) {
     return PeriodBudget(
       period: period,
       start: start,
@@ -227,7 +227,7 @@ PeriodBudget calculatePeriodBudget({
         ? PeriodBasis.measured
         : PeriodBasis.partialMeasured,
     drivenKm: driven,
-    remainingKm: hasExactBoundary ? allowance - driven : null,
+    remainingKm: allowance - driven,
     measuredFrom: first.measuredAt,
     measuredThrough: latest.measuredAt,
   );
