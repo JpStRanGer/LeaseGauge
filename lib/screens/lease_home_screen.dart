@@ -1704,16 +1704,28 @@ class _PeriodComparisonCard extends StatelessWidget {
     BudgetPeriod.month => 'This month',
   };
 
-  String _status(BudgetPeriod period, PeriodBudget? budget) {
+  String _measurementTime(BuildContext context, DateTime value) {
+    final local = value.toLocal();
+    final localizations = MaterialLocalizations.of(context);
+    return '${localizations.formatMediumDate(local)}, ${localizations.formatTimeOfDay(TimeOfDay.fromDateTime(local), alwaysUse24HourFormat: true)}';
+  }
+
+  String _status(
+    BuildContext context,
+    BudgetPeriod period,
+    PeriodBudget? budget,
+  ) {
     if (historyError != null) return 'Local history is unavailable.';
     if (budget == null) return 'Missing start reading on this device.';
     return switch (budget.basis) {
       PeriodBasis.measured =>
         'Driven: ${formatKm(budget.drivenKm!)} · remaining as of the last reading:',
+      PeriodBasis.partialMeasured =>
+        'Partial measurement: ${formatKm(budget.drivenKm!)} driven since ${_measurementTime(context, budget.measuredFrom!)}. An exact whole-period balance needs a reading at the period start.',
       PeriodBasis.missingStart =>
-        'Missing start-of-${period.name} reading. A reading now cannot recreate the start.',
+        'Add a reading to start measuring from now. The app will clearly mark it as a partial ${period.name} measurement.',
       PeriodBasis.missingLatest =>
-        'A newer odometer reading is needed to measure this period.',
+        'Start reading saved at ${_measurementTime(context, budget.measuredFrom!)}. Add a newer reading to measure the distance driven.',
       PeriodBasis.beforeTracking => 'Tracking has not started for this period.',
     };
   }
@@ -1750,7 +1762,7 @@ class _PeriodComparisonCard extends StatelessWidget {
                     ),
                     InfoHelpItem(
                       heading: 'How measurement works',
-                      description: 'LeaseGauge needs a local odometer reading from the start of the period and a newer reading. If either is missing, the app explains what data is needed.',
+                      description: 'The first local reading becomes a safe starting point. A later reading shows the distance driven since then. If the first reading was after the calendar period began, LeaseGauge labels the result as partial instead of pretending it covers the whole period.',
                     ),
                     InfoHelpItem(
                       heading: 'Reading the result',
@@ -1791,7 +1803,7 @@ class _PeriodComparisonCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                _status(period, budgets?[period]),
+                _status(context, period, budgets?[period]),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -1806,6 +1818,13 @@ class _PeriodComparisonCard extends StatelessWidget {
                 ),
                 Text(
                   'Measured through ${MaterialLocalizations.of(context).formatMediumDate(budgets![period]!.measuredThrough!.toLocal())}, ${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(budgets![period]!.measuredThrough!.toLocal()), alwaysUse24HourFormat: true)}',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ] else if (budgets?[period]?.basis ==
+                  PeriodBasis.partialMeasured) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Measured through ${_measurementTime(context, budgets![period]!.measuredThrough!)}',
                   style: theme.textTheme.bodySmall,
                 ),
               ],

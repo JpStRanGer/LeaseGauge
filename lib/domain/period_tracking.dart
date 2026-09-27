@@ -46,7 +46,13 @@ class DatedOdometerReading {
 
 enum BudgetPeriod { day, week, month }
 
-enum PeriodBasis { measured, missingStart, missingLatest, beforeTracking }
+enum PeriodBasis {
+  measured,
+  partialMeasured,
+  missingStart,
+  missingLatest,
+  beforeTracking,
+}
 
 class PeriodBudget {
   const PeriodBudget({
@@ -57,6 +63,7 @@ class PeriodBudget {
     required this.basis,
     this.drivenKm,
     this.remainingKm,
+    this.measuredFrom,
     this.measuredThrough,
   });
 
@@ -67,6 +74,11 @@ class PeriodBudget {
   final PeriodBasis basis;
   final double? drivenKm;
   final double? remainingKm;
+
+  /// The first reading used for this result. When it is later than the
+  /// calendar boundary, [basis] is [PeriodBasis.partialMeasured] and no exact
+  /// whole-period balance is claimed.
+  final DateTime? measuredFrom;
 
   /// The remaining figure is true only as of this measurement, not "now".
   final DateTime? measuredThrough;
@@ -155,15 +167,6 @@ PeriodBudget calculatePeriodBudget({
   }
 
   final boundary = DateTime(start.year, start.month, start.day);
-  if (boundary.isBefore(baseline.startedAt)) {
-    return PeriodBudget(
-      period: period,
-      start: start,
-      end: end,
-      allowanceKm: allowance,
-      basis: PeriodBasis.missingStart,
-    );
-  }
 
   final eligible =
       readings
@@ -179,15 +182,11 @@ PeriodBudget calculatePeriodBudget({
         ..sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
   // Calendar boundaries are local instants. DateTime.utc above is only used
   // for day counting, which stays stable across daylight-saving transitions.
-  DatedOdometerReading? first;
-  DatedOdometerReading? latest;
-  for (final reading in eligible) {
-    if (reading.measuredAt.isAtSameMomentAs(boundary)) first = reading;
-    if (!reading.measuredAt.isBefore(boundary) &&
-        reading.measuredAt.isBefore(now.add(const Duration(microseconds: 1)))) {
-      latest = reading;
-    }
-  }
+  final periodReadings = eligible
+      .where((reading) => !reading.measuredAt.isBefore(boundary))
+      .toList();
+  final first = periodReadings.isEmpty ? null : periodReadings.first;
+  final latest = periodReadings.isEmpty ? null : periodReadings.last;
   if (first == null) {
     return PeriodBudget(
       period: period,
@@ -204,6 +203,7 @@ PeriodBudget calculatePeriodBudget({
       end: end,
       allowanceKm: allowance,
       basis: PeriodBasis.missingLatest,
+      measuredFrom: first.measuredAt,
     );
   }
   final driven = latest.kilometers - first.kilometers;
@@ -214,16 +214,21 @@ PeriodBudget calculatePeriodBudget({
       end: end,
       allowanceKm: allowance,
       basis: PeriodBasis.missingLatest,
+      measuredFrom: first.measuredAt,
     );
   }
+  final hasExactBoundary = first.measuredAt.isAtSameMomentAs(boundary);
   return PeriodBudget(
     period: period,
     start: start,
     end: end,
     allowanceKm: allowance,
-    basis: PeriodBasis.measured,
+    basis: hasExactBoundary
+        ? PeriodBasis.measured
+        : PeriodBasis.partialMeasured,
     drivenKm: driven,
-    remainingKm: allowance - driven,
+    remainingKm: hasExactBoundary ? allowance - driven : null,
+    measuredFrom: first.measuredAt,
     measuredThrough: latest.measuredAt,
   );
 }

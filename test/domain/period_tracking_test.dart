@@ -85,7 +85,7 @@ void main() {
     expect(result.basis, PeriodBasis.missingStart);
   });
 
-  test('a daytime manual entry cannot masquerade as a midnight reading', () {
+  test('a daytime manual entry becomes an honest partial start', () {
     final manual = DatedOdometerReading(
       carKey: 'car-a',
       kilometers: 1020,
@@ -100,9 +100,38 @@ void main() {
       period: BudgetPeriod.day,
     );
     expect(result.allowanceKm, 20);
-    expect(result.basis, PeriodBasis.missingStart);
+    expect(result.basis, PeriodBasis.missingLatest);
     expect(result.drivenKm, isNull);
     expect(result.remainingKm, isNull);
+    expect(result.measuredFrom, manual.measuredAt);
+  });
+
+  test('two daytime readings produce a partial measured distance', () {
+    final first = DatedOdometerReading(
+      carKey: 'car-a',
+      kilometers: 1020,
+      source: OdometerReadingSource.manual,
+      measuredAt: DateTime(2026, 9, 23, 14),
+      receivedAt: DateTime(2026, 9, 23, 14),
+    );
+    final latest = DatedOdometerReading(
+      carKey: 'car-a',
+      kilometers: 1028,
+      source: OdometerReadingSource.manual,
+      measuredAt: DateTime(2026, 9, 23, 16),
+      receivedAt: DateTime(2026, 9, 23, 16),
+    );
+    final result = calculatePeriodBudget(
+      baseline: baseline,
+      readings: [first, latest],
+      now: DateTime(2026, 9, 23, 17),
+      period: BudgetPeriod.day,
+    );
+    expect(result.basis, PeriodBasis.partialMeasured);
+    expect(result.drivenKm, 8);
+    expect(result.remainingKm, isNull);
+    expect(result.measuredFrom, first.measuredAt);
+    expect(result.measuredThrough, latest.measuredAt);
   });
 
   test('a later manual entry can complete an existing boundary pair', () {

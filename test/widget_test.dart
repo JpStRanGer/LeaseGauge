@@ -146,6 +146,56 @@ void main() {
     expect(find.text('1 manual reading saved on this device.'), findsOneWidget);
   });
 
+  testWidgets('two manual readings show an honest partial period measurement', (
+    WidgetTester tester,
+  ) async {
+    final store = _MemoryLeaseFormStore(
+      values: LeaseFormValues(
+        allowedDistanceKm: 1000,
+        startOdometerKm: 0,
+        currentOdometerKm: 100,
+        commuteDistanceKm: 0,
+        returnDate: DateTime.now().add(const Duration(days: 30)),
+        commuteWeekdays: const {},
+      ),
+    );
+    final trackingStore = _MemoryPeriodTrackingStore();
+    await tester.pumpWidget(
+      LeaseGaugeApp(
+        storage: store,
+        trackingStore: trackingStore,
+        legalStore: _AcceptedLegalStore(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('expandOdometerStatus')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('quickOdometerField')), '150');
+    await tester.tap(find.byKey(const Key('saveOdometerButton')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('quickOdometerField')), '200');
+    await tester.tap(find.byKey(const Key('saveOdometerButton')));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('periodComparisonCard')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(
+      find.textContaining('Partial measurement: 50 km driven since'),
+      findsNWidgets(3),
+    );
+    expect(
+      find.textContaining(
+        'An exact whole-period balance needs a reading at the period start.',
+      ),
+      findsNWidgets(3),
+    );
+    expect(store.values!.currentOdometerKm, 200);
+  });
+
   testWidgets('daily suggestion is prominent without changing old totals', (
     WidgetTester tester,
   ) async {
