@@ -1356,7 +1356,8 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                         ),
                       const SizedBox(height: 18),
                       _DailySuggestionCard(
-                        value: _formatKm(budgets!.todayKm, signed: true),
+                        numericValue: budgets!.todayKm,
+                        value: _formatKm(budgets.todayKm, signed: true),
                         sourceOdometer: _formatKm(plan.currentOdometerKm),
                         calculation: remainingCalendarDays <= 0
                             ? 'The return date has been reached, so there are no remaining days to divide the balance across.'
@@ -1372,6 +1373,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                       ),
                       const SizedBox(height: 14),
                       _BalanceHero(
+                        numericValue: budgets.totalKm,
                         balance: _formatKm(budgets.totalKm, signed: true),
                         calculation:
                             '${_formatKm(calculation!.remainingContractKm)} remaining contract − ${_formatKm(calculation.commuteReserveKm)} reserved commuting = ${_formatKm(calculation.leisureDistanceKm, signed: true)}',
@@ -1404,6 +1406,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                             runSpacing: 12,
                             children: [
                               _BudgetTile(
+                                numericValue: budgets.currentMonthKm,
                                 width: cardWidth,
                                 icon: Icons.calendar_month_rounded,
                                 label: 'Suggested for the rest of this month',
@@ -1420,6 +1423,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                 ),
                               ),
                               _BudgetTile(
+                                numericValue: budgets.currentWeekKm,
                                 width: cardWidth,
                                 icon: Icons.date_range_rounded,
                                 label: 'Suggested for the rest of this week',
@@ -1436,6 +1440,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                 ),
                               ),
                               _BudgetTile(
+                                numericValue: budgets.todayKm,
                                 width: cardWidth,
                                 icon: Icons.today_rounded,
                                 label: 'Suggested today',
@@ -1856,6 +1861,10 @@ class _PeriodComparisonCard extends StatelessWidget {
                   formatKm(budgets![period]!.remainingKm!, signed: true),
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
+                    color: _signedValueColor(
+                      context,
+                      budgets![period]!.remainingKm!,
+                    ),
                   ),
                 ),
                 Text(
@@ -1869,6 +1878,10 @@ class _PeriodComparisonCard extends StatelessWidget {
                   formatKm(budgets![period]!.remainingKm!, signed: true),
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
+                    color: _signedValueColor(
+                      context,
+                      budgets![period]!.remainingKm!,
+                    ),
                   ),
                 ),
                 Text(
@@ -1886,12 +1899,14 @@ class _PeriodComparisonCard extends StatelessWidget {
 
 class _DailySuggestionCard extends StatelessWidget {
   const _DailySuggestionCard({
+    required this.numericValue,
     required this.value,
     required this.sourceOdometer,
     required this.calculation,
     required this.resetAt,
   });
 
+  final double numericValue;
   final String value;
   final String sourceOdometer;
   final String calculation;
@@ -1953,7 +1968,7 @@ class _DailySuggestionCard extends StatelessWidget {
                 value,
                 style: theme.textTheme.displayMedium?.copyWith(
                   fontWeight: FontWeight.w800,
-                  color: theme.colorScheme.onSurface,
+                  color: _signedValueColor(context, numericValue),
                 ),
               ),
             ),
@@ -1990,12 +2005,14 @@ class _DailySuggestionCard extends StatelessWidget {
 
 class _BalanceHero extends StatelessWidget {
   const _BalanceHero({
+    required this.numericValue,
     required this.balance,
     required this.calculation,
     required this.onTrack,
     required this.returnDate,
   });
 
+  final double numericValue;
   final String balance;
   final String calculation;
   final bool onTrack;
@@ -2067,8 +2084,8 @@ class _BalanceHero extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: Text(
                 balance,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: _signedValueColor(context, numericValue, onDark: true),
                   fontSize: 48,
                   fontWeight: FontWeight.w800,
                   height: 1.1,
@@ -2099,6 +2116,7 @@ class _BalanceHero extends StatelessWidget {
 
 class _BudgetTile extends StatelessWidget {
   const _BudgetTile({
+    required this.numericValue,
     required this.width,
     required this.icon,
     required this.label,
@@ -2107,6 +2125,7 @@ class _BudgetTile extends StatelessWidget {
     required this.resetAt,
   });
 
+  final double numericValue;
   final double width;
   final IconData icon;
   final String label;
@@ -2164,8 +2183,10 @@ class _BudgetTile extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 value,
-                style: Theme.of(context).textTheme.headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.w800),
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: _signedValueColor(context, numericValue),
+                ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -2181,6 +2202,25 @@ class _BudgetTile extends StatelessWidget {
       ),
     );
   }
+}
+
+const _positiveValueColor = Color(0xFF176B51);
+const _negativeValueColor = Color(0xFFB3261E);
+const _positiveValueColorOnDark = Color(0xFF9AE6CA);
+const _negativeValueColorOnDark = Color(0xFFFFB4AB);
+
+Color _signedValueColor(
+  BuildContext context,
+  double value, {
+  bool onDark = false,
+}) {
+  if (value > 0) {
+    return onDark ? _positiveValueColorOnDark : _positiveValueColor;
+  }
+  if (value < 0) {
+    return onDark ? _negativeValueColorOnDark : _negativeValueColor;
+  }
+  return onDark ? Colors.white : Theme.of(context).colorScheme.onSurface;
 }
 
 DateTime _periodResetAt(DateTime now, BudgetPeriod period) => switch (period) {

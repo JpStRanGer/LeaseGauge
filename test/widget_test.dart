@@ -220,6 +220,10 @@ void main() {
       find.descendant(of: dailyCard, matching: find.text('+30 km')),
       findsOneWidget,
     );
+    final positiveValue = tester.widget<Text>(
+      find.descendant(of: dailyCard, matching: find.text('+30 km')),
+    );
+    expect(positiveValue.style?.color, const Color(0xFF176B51));
     expect(
       find.descendant(
         of: dailyCard,
@@ -251,6 +255,40 @@ void main() {
     );
     expect(find.text('+900 km'), findsOneWidget);
     expect(store.values!.currentOdometerKm, 100);
+  });
+
+  testWidgets('signed figures use a distinct accessible negative color', (
+    WidgetTester tester,
+  ) async {
+    final store = _MemoryLeaseFormStore(
+      values: LeaseFormValues(
+        allowedDistanceKm: 100,
+        startOdometerKm: 0,
+        currentOdometerKm: 200,
+        commuteDistanceKm: 0,
+        returnDate: DateTime.now().add(const Duration(days: 30)),
+        commuteWeekdays: const {},
+      ),
+    );
+    await tester.pumpWidget(
+      LeaseGaugeApp(
+        legalStore: _AcceptedLegalStore(),
+        storage: store,
+        trackingStore: _MemoryPeriodTrackingStore(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final dailyCard = find.byKey(const Key('dailySuggestionCard'));
+    final negativeFinder = find.descendant(
+      of: dailyCard,
+      matching: find.text('−3 km'),
+    );
+    expect(negativeFinder, findsOneWidget);
+    expect(
+      tester.widget<Text>(negativeFinder).style?.color,
+      const Color(0xFFB3261E),
+    );
   });
 
   testWidgets('information cards explain their data in a help dialog', (
