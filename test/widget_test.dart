@@ -280,6 +280,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('How it is calculated'), findsOneWidget);
+    expect(find.text('The actual calculation'), findsOneWidget);
+    expect(find.textContaining('remaining days ≈'), findsOneWidget);
     expect(
       find.text(
         'This is a planning suggestion for leisure driving today, not a measurement of what you have driven today.',

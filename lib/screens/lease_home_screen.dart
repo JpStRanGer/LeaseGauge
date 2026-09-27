@@ -741,6 +741,13 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
             from: today,
             returnDate: plan!.returnDate,
           );
+    final remainingCalendarDays = plan == null
+        ? 0
+        : DateTime.utc(
+            plan.returnDate.year,
+            plan.returnDate.month,
+            plan.returnDate.day,
+          ).difference(DateTime.utc(today.year, today.month, today.day)).inDays;
     final trackingSession =
         plan == null || (_volvoConnected && _selectedVolvoVehicleId == null)
         ? null
@@ -1351,6 +1358,9 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                       _DailySuggestionCard(
                         value: _formatKm(budgets!.todayKm, signed: true),
                         sourceOdometer: _formatKm(plan.currentOdometerKm),
+                        calculation: remainingCalendarDays <= 0
+                            ? 'The return date has been reached, so there are no remaining days to divide the balance across.'
+                            : '${_formatKm(calculation!.leisureDistanceKm)} ÷ $remainingCalendarDays remaining days ≈ ${_formatKm(budgets.todayKm)} per day',
                         resetAt: _periodResetAt(periodNow, BudgetPeriod.day),
                       ),
                       const SizedBox(height: 14),
@@ -1363,6 +1373,8 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                       const SizedBox(height: 14),
                       _BalanceHero(
                         balance: _formatKm(budgets.totalKm, signed: true),
+                        calculation:
+                            '${_formatKm(calculation!.remainingContractKm)} remaining contract − ${_formatKm(calculation.commuteReserveKm)} reserved commuting = ${_formatKm(calculation.leisureDistanceKm, signed: true)}',
                         onTrack: budgets.totalKm >= 0,
                         returnDate: MaterialLocalizations.of(context)
                             .formatShortDate(plan.returnDate),
@@ -1399,6 +1411,9 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                   budgets.currentMonthKm,
                                   signed: true,
                                 ),
+                                calculation: budgets.todayKm == 0
+                                    ? '0 km per day × the days left in this month = 0 km'
+                                    : '${_formatKm(budgets.todayKm)} per day × ${(budgets.currentMonthKm / budgets.todayKm).abs().round()} days ≈ ${_formatKm(budgets.currentMonthKm)}',
                                 resetAt: _periodResetAt(
                                   periodNow,
                                   BudgetPeriod.month,
@@ -1412,6 +1427,9 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                   budgets.currentWeekKm,
                                   signed: true,
                                 ),
+                                calculation: budgets.todayKm == 0
+                                    ? '0 km per day × the days left in this week = 0 km'
+                                    : '${_formatKm(budgets.todayKm)} per day × ${(budgets.currentWeekKm / budgets.todayKm).abs().round()} days ≈ ${_formatKm(budgets.currentWeekKm)}',
                                 resetAt: _periodResetAt(
                                   periodNow,
                                   BudgetPeriod.week,
@@ -1422,6 +1440,8 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                 icon: Icons.today_rounded,
                                 label: 'Suggested today',
                                 value: _formatKm(budgets.todayKm, signed: true),
+                                calculation:
+                                    '${_formatKm(budgets.todayKm)} per day × 1 day = ${_formatKm(budgets.todayKm)}',
                                 resetAt: _periodResetAt(
                                   periodNow,
                                   BudgetPeriod.day,
@@ -1469,20 +1489,25 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                   ?.copyWith(fontWeight: FontWeight.w700),
                             ),
                           ),
-                          const InfoHelpButton(
+                          InfoHelpButton(
                             key: Key('leaseSnapshotHelpButton'),
                             title: 'Lease snapshot',
                             introduction: 'This is a summary of the lease details and calculated distances LeaseGauge is currently using.',
                             items: [
-                              InfoHelpItem(
+                              const InfoHelpItem(
                                 heading: 'Contract figures',
                                 description: 'The allowance, starting odometer, commute plan and return date come from the plan you saved.',
                               ),
-                              InfoHelpItem(
+                              const InfoHelpItem(
                                 heading: 'Calculated figures',
                                 description: 'Already driven, remaining distance and the commute reserve are recalculated from your latest saved odometer reading.',
                               ),
                               InfoHelpItem(
+                                heading: 'The actual calculations',
+                                description:
+                                    'Already driven: ${_formatKm(plan.currentOdometerKm)} − ${_formatKm(plan.startOdometerKm)} = ${_formatKm(calculation.usedDistanceKm)}.\n\nRemaining contract: ${_formatKm(plan.allowedDistanceKm)} − ${_formatKm(calculation.usedDistanceKm)} = ${_formatKm(calculation.remainingContractKm)}.\n\nLeisure distance: ${_formatKm(calculation.remainingContractKm)} − ${_formatKm(calculation.commuteReserveKm)} = ${_formatKm(calculation.leisureDistanceKm, signed: true)}.',
+                              ),
+                              const InfoHelpItem(
                                 heading: 'If something looks wrong',
                                 description: 'Check the current odometer and choose Edit plan to review the contract details.',
                               ),
@@ -1503,7 +1528,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                               ),
                               _DetailRow(
                                 label: 'Already driven',
-                                value: _formatKm(calculation!.usedDistanceKm),
+                                value: _formatKm(calculation.usedDistanceKm),
                               ),
                               _DetailRow(
                                 label: 'Remaining in contract',
@@ -1663,6 +1688,10 @@ class _LocalTrackingCard extends StatelessWidget {
                       description: 'A reading near the start of a period and a newer reading let LeaseGauge calculate how far you actually drove.',
                     ),
                     InfoHelpItem(
+                      heading: 'The calculation',
+                      description: 'Recorded driving = newest odometer reading − first odometer reading. Example: 2,070 km − 2,050 km = 20 km recorded driving.',
+                    ),
+                    InfoHelpItem(
                       heading: 'Kept separate',
                       description: 'Different cars and substantial plan revisions use separate histories so their measurements are not mixed.',
                     ),
@@ -1734,6 +1763,10 @@ class _PeriodComparisonCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final todayBudget = budgets?[BudgetPeriod.day];
+    final todayCalculation = todayBudget == null
+        ? 'A calculation appears after the first local reading.'
+        : '${formatKm(todayBudget.allowanceKm)} full allowance − ${formatKm(todayBudget.drivenKm ?? 0)} recorded driving = ${formatKm(todayBudget.remainingKm ?? todayBudget.allowanceKm, signed: true)} remaining from recorded driving.';
     return Card(
       key: const Key('periodComparisonCard'),
       margin: EdgeInsets.zero,
@@ -1752,24 +1785,28 @@ class _PeriodComparisonCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                const InfoHelpButton(
+                InfoHelpButton(
                   key: Key('periodComparisonHelpButton'),
                   title: 'Calendar period comparison',
                   introduction: 'This compares an allowance for the current day, week and month with the distance actually measured in that period.',
                   items: [
-                    InfoHelpItem(
+                    const InfoHelpItem(
                       heading: 'What is included',
                       description: 'These period figures cover all driving, including commuting. They are not the same as the leisure-only suggestions.',
                     ),
-                    InfoHelpItem(
+                    const InfoHelpItem(
                       heading: 'The allowance is fixed',
                       description: 'The full-period allowance is the planned amount for the day, week or month. It does not count down when you add a reading. The measured driven distance and an exact remaining balance, when available, are shown separately.',
                     ),
-                    InfoHelpItem(
+                    const InfoHelpItem(
                       heading: 'How measurement works',
                       description: 'The first local reading starts the measurement with zero recorded driving and the full allowance available. Later readings subtract only the distance actually recorded after that starting point. LeaseGauge does not guess or subtract driving from before the first reading.',
                     ),
                     InfoHelpItem(
+                      heading: 'Today’s actual calculation',
+                      description: todayCalculation,
+                    ),
+                    const InfoHelpItem(
                       heading: 'Reading the result',
                       description: 'A positive remaining value means the measured driving is below the assigned allowance. A negative value means it is above it.',
                     ),
@@ -1851,11 +1888,13 @@ class _DailySuggestionCard extends StatelessWidget {
   const _DailySuggestionCard({
     required this.value,
     required this.sourceOdometer,
+    required this.calculation,
     required this.resetAt,
   });
 
   final String value;
   final String sourceOdometer;
+  final String calculation;
   final DateTime resetAt;
 
   @override
@@ -1881,20 +1920,24 @@ class _DailySuggestionCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                const InfoHelpButton(
+                InfoHelpButton(
                   key: Key('dailySuggestionHelpButton'),
                   title: 'Suggested today',
                   introduction: 'This is a planning suggestion for leisure driving today, not a measurement of what you have driven today.',
                   items: [
-                    InfoHelpItem(
+                    const InfoHelpItem(
                       heading: 'How it is calculated',
                       description: 'LeaseGauge first reserves distance for the commutes in your plan. It then spreads the remaining leisure distance evenly across the calendar days left in the lease.',
                     ),
                     InfoHelpItem(
+                      heading: 'The actual calculation',
+                      description: calculation,
+                    ),
+                    const InfoHelpItem(
                       heading: 'How to read it',
                       description: 'A positive number is the suggested room available today. A negative number means the plan is already over its calculated leisure allowance.',
                     ),
-                    InfoHelpItem(
+                    const InfoHelpItem(
                       heading: 'It changes over time',
                       description: 'The suggestion is recalculated whenever the saved odometer or plan changes.',
                     ),
@@ -1948,11 +1991,13 @@ class _DailySuggestionCard extends StatelessWidget {
 class _BalanceHero extends StatelessWidget {
   const _BalanceHero({
     required this.balance,
+    required this.calculation,
     required this.onTrack,
     required this.returnDate,
   });
 
   final String balance;
+  final String calculation;
   final bool onTrack;
   final String returnDate;
 
@@ -1980,21 +2025,25 @@ class _BalanceHero extends StatelessWidget {
                   size: 32,
                 ),
                 const Spacer(),
-                const InfoHelpButton(
+                InfoHelpButton(
                   key: Key('balanceHelpButton'),
                   title: 'Leisure distance left',
                   introduction: 'This is the estimated distance available for non-commute driving until the car is returned.',
                   iconColor: Color(0xFFE5F5F4),
                   items: [
-                    InfoHelpItem(
+                    const InfoHelpItem(
                       heading: 'How it is calculated',
                       description: 'LeaseGauge takes the contract distance still available and subtracts the distance reserved for your planned commutes.',
                     ),
                     InfoHelpItem(
+                      heading: 'The actual calculation',
+                      description: calculation,
+                    ),
+                    const InfoHelpItem(
                       heading: 'Positive or negative',
                       description: 'A positive value is available beyond the planned commuting. A negative value means the current plan exceeds the contract allowance.',
                     ),
-                    InfoHelpItem(
+                    const InfoHelpItem(
                       heading: 'This is an estimate',
                       description: 'The result depends on the saved odometer, commute schedule and contract details being correct.',
                     ),
@@ -2054,6 +2103,7 @@ class _BudgetTile extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
+    required this.calculation,
     required this.resetAt,
   });
 
@@ -2061,6 +2111,7 @@ class _BudgetTile extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
+  final String calculation;
   final DateTime resetAt;
 
   @override
@@ -2082,16 +2133,20 @@ class _BudgetTile extends StatelessWidget {
                     key: ValueKey('rollingBudgetHelpButton-$label'),
                     title: label,
                     introduction: 'This is a rolling leisure-driving suggestion for the named period. It is not a measurement of driving during that period.',
-                    items: const [
-                      InfoHelpItem(
+                    items: [
+                      const InfoHelpItem(
                         heading: 'How it is calculated',
                         description: 'LeaseGauge reserves planned commuting, divides the remaining leisure distance across the calendar days left in the lease, and adds the relevant days in this period.',
                       ),
                       InfoHelpItem(
+                        heading: 'The actual calculation',
+                        description: calculation,
+                      ),
+                      const InfoHelpItem(
                         heading: 'How to read it',
                         description: 'A positive number suggests room for leisure driving. A negative number means the calculated leisure plan is over its allowance.',
                       ),
-                      InfoHelpItem(
+                      const InfoHelpItem(
                         heading: 'Why it moves',
                         description: 'The value is recalculated from the newest saved odometer and is not preserved as a historical period balance.',
                       ),
