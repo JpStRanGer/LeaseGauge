@@ -1350,6 +1350,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                       const SizedBox(height: 18),
                       _DailySuggestionCard(
                         value: _formatKm(budgets!.todayKm, signed: true),
+                        sourceOdometer: _formatKm(plan.currentOdometerKm),
                         resetAt: _periodResetAt(periodNow, BudgetPeriod.day),
                       ),
                       const SizedBox(height: 14),
@@ -1761,6 +1762,10 @@ class _PeriodComparisonCard extends StatelessWidget {
                       description: 'These period figures cover all driving, including commuting. They are not the same as the leisure-only suggestions.',
                     ),
                     InfoHelpItem(
+                      heading: 'The allowance is fixed',
+                      description: 'The full-period allowance is the planned amount for the day, week or month. It does not count down when you add a reading. The measured driven distance and an exact remaining balance, when available, are shown separately.',
+                    ),
+                    InfoHelpItem(
                       heading: 'How measurement works',
                       description: 'The first local reading becomes a safe starting point. A later reading shows the distance driven since then. If the first reading was after the calendar period began, LeaseGauge labels the result as partial instead of pretending it covers the whole period.',
                     ),
@@ -1798,8 +1803,8 @@ class _PeriodComparisonCard extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 budgets == null
-                    ? 'Assigned allowance: waiting for a local start reading'
-                    : 'Assigned allowance: ${formatKm(budgets![period]!.allowanceKm)}',
+                    ? 'Full-period allowance (fixed): waiting for a local start reading'
+                    : 'Full-period allowance (fixed): ${formatKm(budgets![period]!.allowanceKm)}',
               ),
               const SizedBox(height: 4),
               Text(
@@ -1837,9 +1842,14 @@ class _PeriodComparisonCard extends StatelessWidget {
 }
 
 class _DailySuggestionCard extends StatelessWidget {
-  const _DailySuggestionCard({required this.value, required this.resetAt});
+  const _DailySuggestionCard({
+    required this.value,
+    required this.sourceOdometer,
+    required this.resetAt,
+  });
 
   final String value;
+  final String sourceOdometer;
   final DateTime resetAt;
 
   @override
@@ -1904,6 +1914,15 @@ class _DailySuggestionCard extends StatelessWidget {
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.primary,
                 fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Based on saved odometer: $sourceOdometer',
+              key: const Key('dailySuggestionOdometer'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 8),

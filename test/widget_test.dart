@@ -103,6 +103,7 @@ void main() {
     expect(trackingStore.sessions, hasLength(1));
     expect(trackingStore.sessions.single.readings, hasLength(1));
     expect(trackingStore.sessions.single.readings.single.kilometers, 250);
+    expect(find.text('Based on saved odometer: 250 km'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('+750 km'),
       200,
@@ -233,6 +234,13 @@ void main() {
     );
     expect(
       find.descendant(of: dailyCard, matching: find.textContaining('resets')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: dailyCard,
+        matching: find.text('Based on saved odometer: 100 km'),
+      ),
       findsOneWidget,
     );
     expect(
