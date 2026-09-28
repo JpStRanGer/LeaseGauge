@@ -1375,8 +1375,12 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                       _BalanceHero(
                         numericValue: budgets.totalKm,
                         balance: _formatKm(budgets.totalKm, signed: true),
+                        remainingContractKm: calculation!.remainingContractKm,
+                        remainingContract: _formatKm(
+                          calculation.remainingContractKm,
+                        ),
                         calculation:
-                            '${_formatKm(calculation!.remainingContractKm)} remaining contract − ${_formatKm(calculation.commuteReserveKm)} reserved commuting = ${_formatKm(calculation.leisureDistanceKm, signed: true)}',
+                            '${_formatKm(calculation.remainingContractKm)} remaining contract − ${_formatKm(calculation.commuteReserveKm)} reserved commuting = ${_formatKm(calculation.leisureDistanceKm, signed: true)}',
                         onTrack: budgets.totalKm >= 0,
                         returnDate: MaterialLocalizations.of(context)
                             .formatShortDate(plan.returnDate),
@@ -2092,6 +2096,8 @@ class _BalanceHero extends StatelessWidget {
   const _BalanceHero({
     required this.numericValue,
     required this.balance,
+    required this.remainingContractKm,
+    required this.remainingContract,
     required this.calculation,
     required this.onTrack,
     required this.returnDate,
@@ -2099,13 +2105,25 @@ class _BalanceHero extends StatelessWidget {
 
   final double numericValue;
   final String balance;
+  final double remainingContractKm;
+  final String remainingContract;
   final String calculation;
   final bool onTrack;
   final String returnDate;
 
   @override
   Widget build(BuildContext context) {
+    final hasPositiveBalance = numericValue >= 0 && remainingContractKm > 0;
+    final progress = hasPositiveBalance
+        ? (numericValue / remainingContractKm).clamp(0.0, 1.0).toDouble()
+        : numericValue < 0
+        ? 1.0
+        : 0.0;
+    final barColor = onTrack
+        ? const Color(0xFFB8F0E7)
+        : const Color(0xFFFFB4AB);
     return Container(
+      key: const Key('leisureBalanceCard'),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFF173A47), Color(0xFF276477)],
@@ -2146,6 +2164,10 @@ class _BalanceHero extends StatelessWidget {
                       description: 'A positive value is available beyond the planned commuting. A negative value means the current plan exceeds the contract allowance.',
                     ),
                     const InfoHelpItem(
+                      heading: 'The bar',
+                      description: 'The bar shows how much of the remaining contract distance is available for leisure driving after planned commuting is reserved. It does not try to classify past driving as commute or leisure driving.',
+                    ),
+                    const InfoHelpItem(
                       heading: 'This is an estimate',
                       description: 'The result depends on the saved odometer, commute schedule and contract details being correct.',
                     ),
@@ -2176,6 +2198,42 @@ class _BalanceHero extends StatelessWidget {
                   height: 1.1,
                 ),
               ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              onTrack
+                  ? 'Available after planned commuting'
+                  : 'Planned driving exceeds the remaining contract',
+              style: const TextStyle(
+                color: Color(0xFFE5F5F4),
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 7),
+            Semantics(
+              label: 'Leisure distance available compared with the remaining contract distance',
+              value: onTrack
+                  ? '$balance of $remainingContract'
+                  : '$balance, over plan',
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(99),
+                child: LinearProgressIndicator(
+                  key: const Key('leisureBalanceBar'),
+                  value: progress,
+                  minHeight: 10,
+                  color: barColor,
+                  backgroundColor: Colors.white.withValues(alpha: 0.22),
+                ),
+              ),
+            ),
+            const SizedBox(height: 7),
+            Text(
+              onTrack
+                  ? '$balance of $remainingContract remaining after the commute reserve'
+                  : '$balance available after planned commuting',
+              key: const Key('leisureBalanceBarLabel'),
+              style: const TextStyle(color: Color(0xFFC1DDE3), fontSize: 12),
             ),
             const SizedBox(height: 16),
             Text(

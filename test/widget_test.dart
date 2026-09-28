@@ -270,6 +270,14 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('+900 km'), findsOneWidget);
+    final leisureBar = find.byKey(const Key('leisureBalanceBar'));
+    expect(leisureBar, findsOneWidget);
+    expect(tester.widget<LinearProgressIndicator>(leisureBar).value, 1);
+    expect(find.byKey(const Key('leisureBalanceBarLabel')), findsOneWidget);
+    expect(
+      find.text('+900 km of 900 km remaining after the commute reserve'),
+      findsOneWidget,
+    );
     expect(store.values!.currentOdometerKm, 100);
   });
 
@@ -305,6 +313,16 @@ void main() {
       tester.widget<Text>(negativeFinder).style?.color,
       const Color(0xFFB3261E),
     );
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('leisureBalanceBar')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    final negativeBar = tester.widget<LinearProgressIndicator>(
+      find.byKey(const Key('leisureBalanceBar')),
+    );
+    expect(negativeBar.value, 1);
+    expect(negativeBar.color, const Color(0xFFFFB4AB));
   });
 
   testWidgets('information cards explain their data in a help dialog', (
