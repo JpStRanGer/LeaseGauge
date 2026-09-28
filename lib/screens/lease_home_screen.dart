@@ -741,13 +741,23 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
             from: today,
             returnDate: plan!.returnDate,
           );
-    final remainingCalendarDays = plan == null
+    final rawRemainingCalendarDays = plan == null
         ? 0
         : DateTime.utc(
             plan.returnDate.year,
             plan.returnDate.month,
             plan.returnDate.day,
           ).difference(DateTime.utc(today.year, today.month, today.day)).inDays;
+    final remainingCalendarDays = rawRemainingCalendarDays < 0
+        ? 0
+        : rawRemainingCalendarDays;
+    final remainingWorkdays = plan == null
+        ? 0
+        : countWorkdays(
+            from: today,
+            until: plan.returnDate,
+            commuteWeekdays: plan.commuteWeekdays,
+          );
     final trackingSession =
         plan == null || (_volvoConnected && _selectedVolvoVehicleId == null)
         ? null
@@ -1511,6 +1521,10 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                 heading: 'Calculated figures',
                                 description: 'Already driven, remaining distance and the commute reserve are recalculated from your latest saved odometer reading.',
                               ),
+                              const InfoHelpItem(
+                                heading: 'Days remaining',
+                                description: 'Calendar days and planned workdays include today and stop at the start of the return date. Planned workdays use the commute weekdays selected in your plan.',
+                              ),
                               InfoHelpItem(
                                 heading: 'The actual calculations',
                                 description:
@@ -1552,6 +1566,16 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                               _DetailRow(
                                 label: 'Commute days',
                                 value: _commuteDaysLabel(plan.commuteWeekdays),
+                              ),
+                              _DetailRow(
+                                label: 'Planned workdays remaining',
+                                value:
+                                    '$remainingWorkdays ${remainingWorkdays == 1 ? 'day' : 'days'}',
+                              ),
+                              _DetailRow(
+                                label: 'Calendar days remaining',
+                                value:
+                                    '$remainingCalendarDays ${remainingCalendarDays == 1 ? 'day' : 'days'}',
                               ),
                               _DetailRow(
                                 label: 'Return date',

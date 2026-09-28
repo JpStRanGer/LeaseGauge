@@ -615,6 +615,48 @@ void main() {
     expect(find.text('No commute days'), findsOneWidget);
   });
 
+  testWidgets('lease snapshot shows remaining calendar and planned workdays', (
+    WidgetTester tester,
+  ) async {
+    final now = DateTime.now();
+    final store = _MemoryLeaseFormStore(
+      values: LeaseFormValues(
+        allowedDistanceKm: 1000,
+        startOdometerKm: 0,
+        currentOdometerKm: 100,
+        commuteDistanceKm: 10,
+        returnDate: DateTime(now.year, now.month, now.day + 7),
+        commuteWeekdays: const {
+          DateTime.monday,
+          DateTime.tuesday,
+          DateTime.wednesday,
+          DateTime.thursday,
+          DateTime.friday,
+          DateTime.saturday,
+          DateTime.sunday,
+        },
+      ),
+    );
+
+    await tester.pumpWidget(
+      LeaseGaugeApp(
+        legalStore: _AcceptedLegalStore(),
+        storage: store,
+        trackingStore: _MemoryPeriodTrackingStore(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('Planned workdays remaining'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Planned workdays remaining'), findsOneWidget);
+    expect(find.text('Calendar days remaining'), findsOneWidget);
+    expect(find.text('7 days'), findsNWidgets(2));
+  });
+
   testWidgets('recorded driving at the allowance is shown as reached', (
     WidgetTester tester,
   ) async {
