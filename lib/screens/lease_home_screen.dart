@@ -1526,6 +1526,11 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                 description: 'Calendar days and planned workdays include today and stop at the start of the return date. Planned workdays use the commute weekdays selected in your plan.',
                               ),
                               InfoHelpItem(
+                                heading: 'Workdays and commuting calculation',
+                                description:
+                                    'Planned workdays: count each date from today through the day before the return date when its weekday matches your selected commute days (${_commuteDaysLabel(plan.commuteWeekdays)}) = $remainingWorkdays ${remainingWorkdays == 1 ? 'day' : 'days'}.\n\nCommute reserve: $remainingWorkdays ${remainingWorkdays == 1 ? 'day' : 'days'} × ${_formatKm(plan.commuteDistanceKm)} round trip = ${_formatKm(calculation.commuteReserveKm)}.',
+                              ),
+                              InfoHelpItem(
                                 heading: 'The actual calculations',
                                 description:
                                     'Already driven: ${_formatKm(plan.currentOdometerKm)} − ${_formatKm(plan.startOdometerKm)} = ${_formatKm(calculation.usedDistanceKm)}.\n\nRemaining contract: ${_formatKm(plan.allowedDistanceKm)} − ${_formatKm(calculation.usedDistanceKm)} = ${_formatKm(calculation.remainingContractKm)}.\n\nLeisure distance: ${_formatKm(calculation.remainingContractKm)} − ${_formatKm(calculation.commuteReserveKm)} = ${_formatKm(calculation.leisureDistanceKm, signed: true)}.',

@@ -363,6 +363,27 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Close'));
     await tester.pumpAndSettle();
     expect(find.text('How it is calculated'), findsNothing);
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('leaseSnapshotHelpButton')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.ensureVisible(
+      find.byKey(const Key('leaseSnapshotHelpButton')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('leaseSnapshotHelpButton')));
+    await tester.pumpAndSettle();
+    expect(find.text('Workdays and commuting calculation'), findsOneWidget);
+    expect(
+      find.textContaining('Planned workdays: count each date'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Commute reserve: 0 days × 0 km'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('feedback stays discreet and opens a separate form', (
