@@ -375,13 +375,17 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('leaseSnapshotHelpButton')));
     await tester.pumpAndSettle();
-    expect(find.text('Workdays and commuting calculation'), findsOneWidget);
+    expect(find.text('The actual calculations'), findsOneWidget);
     expect(
-      find.textContaining('Planned workdays: count each date'),
+      find.textContaining('Calendar days: from today through'),
       findsOneWidget,
     );
     expect(
-      find.textContaining('Commute reserve: 0 days × 0 km'),
+      find.textContaining('Planned workdays: you selected'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Commute reserve: 0 workdays × 0 km'),
       findsOneWidget,
     );
   });

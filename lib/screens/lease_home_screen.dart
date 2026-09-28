@@ -758,6 +758,11 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
             until: plan.returnDate,
             commuteWeekdays: plan.commuteWeekdays,
           );
+    final fullCalendarWeeks = remainingCalendarDays ~/ DateTime.daysPerWeek;
+    final extraCalendarDays = remainingCalendarDays % DateTime.daysPerWeek;
+    final selectedWorkdaysPerWeek = plan?.commuteWeekdays.length ?? 0;
+    final workdaysInFullWeeks = fullCalendarWeeks * selectedWorkdaysPerWeek;
+    final workdaysInExtraDays = remainingWorkdays - workdaysInFullWeeks;
     final trackingSession =
         plan == null || (_volvoConnected && _selectedVolvoVehicleId == null)
         ? null
@@ -1526,14 +1531,9 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                 description: 'Calendar days and planned workdays include today and stop at the start of the return date. Planned workdays use the commute weekdays selected in your plan.',
                               ),
                               InfoHelpItem(
-                                heading: 'Workdays and commuting calculation',
-                                description:
-                                    'Planned workdays: count each date from today through the day before the return date when its weekday matches your selected commute days (${_commuteDaysLabel(plan.commuteWeekdays)}) = $remainingWorkdays ${remainingWorkdays == 1 ? 'day' : 'days'}.\n\nCommute reserve: $remainingWorkdays ${remainingWorkdays == 1 ? 'day' : 'days'} × ${_formatKm(plan.commuteDistanceKm)} round trip = ${_formatKm(calculation.commuteReserveKm)}.',
-                              ),
-                              InfoHelpItem(
                                 heading: 'The actual calculations',
                                 description:
-                                    'Already driven: ${_formatKm(plan.currentOdometerKm)} − ${_formatKm(plan.startOdometerKm)} = ${_formatKm(calculation.usedDistanceKm)}.\n\nRemaining contract: ${_formatKm(plan.allowedDistanceKm)} − ${_formatKm(calculation.usedDistanceKm)} = ${_formatKm(calculation.remainingContractKm)}.\n\nLeisure distance: ${_formatKm(calculation.remainingContractKm)} − ${_formatKm(calculation.commuteReserveKm)} = ${_formatKm(calculation.leisureDistanceKm, signed: true)}.',
+                                    'Already driven: ${_formatKm(plan.currentOdometerKm)} − ${_formatKm(plan.startOdometerKm)} = ${_formatKm(calculation.usedDistanceKm)}.\n\nRemaining contract: ${_formatKm(plan.allowedDistanceKm)} − ${_formatKm(calculation.usedDistanceKm)} = ${_formatKm(calculation.remainingContractKm)}.\n\nCalendar days: from today through the day before return = $remainingCalendarDays ${remainingCalendarDays == 1 ? 'day' : 'days'}. That is $fullCalendarWeeks full ${fullCalendarWeeks == 1 ? 'week' : 'weeks'} plus $extraCalendarDays extra ${extraCalendarDays == 1 ? 'day' : 'days'}.\n\nPlanned workdays: you selected ${_commuteDaysLabel(plan.commuteWeekdays)} ($selectedWorkdaysPerWeek ${selectedWorkdaysPerWeek == 1 ? 'day' : 'days'} per full week). $fullCalendarWeeks × $selectedWorkdaysPerWeek = $workdaysInFullWeeks days, plus $workdaysInExtraDays matching ${workdaysInExtraDays == 1 ? 'day' : 'days'} in the final partial week = $remainingWorkdays ${remainingWorkdays == 1 ? 'workday' : 'workdays'}.\n\nCommute reserve: $remainingWorkdays ${remainingWorkdays == 1 ? 'workday' : 'workdays'} × ${_formatKm(plan.commuteDistanceKm)} round trip = ${_formatKm(calculation.commuteReserveKm)}.\n\nLeisure distance: ${_formatKm(calculation.remainingContractKm)} − ${_formatKm(calculation.commuteReserveKm)} = ${_formatKm(calculation.leisureDistanceKm, signed: true)}.',
                               ),
                               const InfoHelpItem(
                                 heading: 'If something looks wrong',
