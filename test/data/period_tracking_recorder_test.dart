@@ -125,4 +125,29 @@ void main() {
       );
     },
   );
+
+  test('a rejected lower Volvo refresh is not added to history', () {
+    final measured = DateTime.utc(2026, 9, 22, 12);
+    final first = appendVolvoReading(
+      sessions: [],
+      plan: plan,
+      vehicleId: 'vin-a',
+      kilometers: 250,
+      measuredAt: measured,
+      receivedAt: measured.add(const Duration(minutes: 1)),
+    );
+
+    final refreshed = appendVolvoReading(
+      sessions: first,
+      plan: plan,
+      vehicleId: 'vin-a',
+      kilometers: 240,
+      measuredAt: measured.add(const Duration(hours: 1)),
+      receivedAt: measured.add(const Duration(hours: 1, minutes: 1)),
+    );
+
+    expect(refreshed, same(first));
+    expect(refreshed.single.readings, hasLength(1));
+    expect(refreshed.single.readings.single.kilometers, 250);
+  });
 }

@@ -63,6 +63,10 @@ List<PeriodTrackingSession> appendVolvoReading({
   if (vehicleId.isEmpty || measuredAt.isAfter(receivedAt)) {
     throw const FormatException('Invalid Volvo measurement.');
   }
+  // A normal refresh is not allowed to move the saved odometer backwards.
+  // When the user explicitly confirms a switch to a lower-mileage car, the
+  // caller first updates [plan], so that car's reading is still accepted.
+  if (kilometers < plan.currentOdometerKm) return sessions;
   return _appendReading(
     sessions: sessions,
     plan: plan,

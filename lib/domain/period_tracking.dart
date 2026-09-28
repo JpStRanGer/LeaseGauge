@@ -88,7 +88,9 @@ DateTime _date(DateTime value) =>
     DateTime.utc(value.year, value.month, value.day);
 
 DateTime _periodStart(DateTime now, BudgetPeriod period) {
-  final today = _date(now);
+  // [now] is an instant. Convert it to the device's calendar before turning
+  // the date into the UTC-based, DST-safe value used for day arithmetic.
+  final today = _date(now.toLocal());
   return switch (period) {
     BudgetPeriod.day => today,
     BudgetPeriod.week => today.subtract(Duration(days: today.weekday - 1)),
@@ -110,7 +112,10 @@ double assignedAllowanceKm({
   required DateTime from,
   required DateTime until,
 }) {
-  final trackingStart = _date(baseline.startedAt);
+  // The baseline is persisted as an instant in UTC. Its calendar day must be
+  // derived in local time or a reading just after midnight can move to the
+  // previous day when the app is restarted.
+  final trackingStart = _date(baseline.startedAt.toLocal());
   final contractEnd = _date(baseline.returnDate);
   final requestedStart = _date(from);
   final requestedEnd = _date(until);

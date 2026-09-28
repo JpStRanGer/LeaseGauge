@@ -596,4 +596,60 @@ void main() {
     );
     expect(find.text('No commute days'), findsOneWidget);
   });
+
+  testWidgets('recorded driving at the allowance is shown as reached', (
+    WidgetTester tester,
+  ) async {
+    final now = DateTime.now();
+    final store = _MemoryLeaseFormStore(
+      values: LeaseFormValues(
+        allowedDistanceKm: 1000,
+        startOdometerKm: 0,
+        currentOdometerKm: 100,
+        commuteDistanceKm: 0,
+        returnDate: DateTime(now.year, now.month, now.day + 1),
+        commuteWeekdays: const {},
+      ),
+    );
+    final trackingStore = _MemoryPeriodTrackingStore();
+
+    await tester.pumpWidget(
+      LeaseGaugeApp(
+        legalStore: _AcceptedLegalStore(),
+        storage: store,
+        trackingStore: trackingStore,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('expandOdometerStatus')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('quickOdometerField')), '500');
+    await tester.tap(find.byKey(const Key('saveOdometerButton')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('quickOdometerField')), '1000');
+    await tester.tap(find.byKey(const Key('saveOdometerButton')));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('periodUsedDistanceBar-day')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    final dailyUsageBar = find.descendant(
+      of: find.byKey(const ValueKey('periodUsedDistanceBar-day')),
+      matching: find.byType(LinearProgressIndicator),
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('periodUsedDistanceBar-day')),
+        matching: find.text('500 km / 500 km'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      tester.widget<LinearProgressIndicator>(dailyUsageBar).color,
+      const Color(0xFFB3261E),
+    );
+  });
 }

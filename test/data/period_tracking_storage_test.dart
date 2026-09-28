@@ -54,6 +54,36 @@ void main() {
     expect(await preferences.getDouble('lease.currentOdometerKm'), 7857);
   });
 
+  test('UTC persistence restores the baseline on the local calendar', () async {
+    final store = LocalPeriodTrackingStore(
+      preferences: SharedPreferencesAsync(),
+    );
+    final localStart = DateTime(2026, 9, 22, 0, 30);
+    final session = PeriodTrackingSession(
+      id: 'local-midnight',
+      baseline: PeriodTrackingBaseline(
+        carKey: 'car-a',
+        startedAt: localStart,
+        odometerKm: 8000,
+        remainingContractKm: 1000,
+        returnDate: DateTime(2026, 10),
+        commuteRoundTripKm: 0,
+        commuteWeekdays: const {},
+      ),
+      readings: const [],
+    );
+
+    await store.save([session]);
+    final loadedStart = (await store.load()).single.baseline.startedAt;
+
+    expect(loadedStart.isUtc, isFalse);
+    expect(loadedStart, localStart);
+    expect(
+      (loadedStart.year, loadedStart.month, loadedStart.day),
+      (localStart.year, localStart.month, localStart.day),
+    );
+  });
+
   test('same Volvo measurement is stored only once and cars stay separate', () {
     final measuredAt = DateTime.utc(2026, 9, 22, 8);
     final reading = DatedOdometerReading(

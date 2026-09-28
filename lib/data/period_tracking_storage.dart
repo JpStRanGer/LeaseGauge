@@ -75,7 +75,10 @@ class LocalPeriodTrackingStore implements PeriodTrackingStore {
         id: json['id'] as String,
         baseline: PeriodTrackingBaseline(
           carKey: baseline['carKey'] as String,
-          startedAt: DateTime.parse(baseline['startedAt'] as String),
+          // Tracking rules use the device's local calendar. Keep the instant
+          // intact while restoring its local representation after loading the
+          // UTC value written below.
+          startedAt: DateTime.parse(baseline['startedAt'] as String).toLocal(),
           odometerKm: (baseline['odometerKm'] as num).toDouble(),
           remainingContractKm: (baseline['remainingContractKm'] as num)
               .toDouble(),

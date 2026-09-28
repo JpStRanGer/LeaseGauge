@@ -1924,7 +1924,7 @@ class _PeriodUsedDistanceBar extends StatelessWidget {
     final allowance = budget?.allowanceKm;
     final hasMeasurement = driven != null && allowance != null;
     final isOver =
-        hasMeasurement && (allowance <= 0 ? driven > 0 : driven > allowance);
+        hasMeasurement && (allowance <= 0 ? driven > 0 : driven >= allowance);
     final progress = !hasMeasurement
         ? 0.0
         : allowance > 0
