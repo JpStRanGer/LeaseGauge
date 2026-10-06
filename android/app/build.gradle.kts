@@ -97,6 +97,13 @@ android {
             versionNameSuffix = "-debug"
             manifestPlaceholders["appLabel"] = "LeaseGauge Test"
         }
+        getByName("profile") {
+            // Profile APKs are smaller remote-test builds and must also stay
+            // separate from the Play Store installation.
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-profile"
+            manifestPlaceholders["appLabel"] = "LeaseGauge Test"
+        }
         release {
             signingConfig = signingConfigs.getByName("upload")
             manifestPlaceholders["appLabel"] = "LeaseGauge"
