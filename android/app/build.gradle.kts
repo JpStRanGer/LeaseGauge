@@ -76,6 +76,7 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["appLabel"] = "LeaseGauge"
     }
 
     signingConfigs {
@@ -90,8 +91,15 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Keep local test installations separate from the Play Store app.
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+            manifestPlaceholders["appLabel"] = "LeaseGauge Test"
+        }
         release {
             signingConfig = signingConfigs.getByName("upload")
+            manifestPlaceholders["appLabel"] = "LeaseGauge"
         }
     }
 }
