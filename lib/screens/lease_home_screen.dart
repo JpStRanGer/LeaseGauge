@@ -12,6 +12,7 @@ import 'package:leasegauge/screens/lease_setup_screen.dart';
 import 'package:leasegauge/screens/feedback_screen.dart';
 import 'package:leasegauge/screens/legal_gate.dart';
 import 'package:leasegauge/screens/settings_screen.dart';
+import 'package:leasegauge/l10n/app_localizations.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -189,8 +190,10 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
     } on Exception {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not save the reading. Please try again.'),
+        SnackBar(
+          content: Text(
+            context.tr('Could not save the reading. Please try again.'),
+          ),
         ),
       );
     } finally {
@@ -406,7 +409,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Use the lower reading?'),
+        title: Text(context.tr('Use the lower reading?')),
         content: Text(
           '${reading.vehicleLabel ?? 'The selected car'} reports '
           '${reading.kilometers.toStringAsFixed(0)} km. Your current plan '
@@ -417,11 +420,11 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Keep current reading'),
+            child: Text(context.tr('Keep current reading')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Use new car reading'),
+            child: Text(context.tr('Use new car reading')),
           ),
         ],
       ),
@@ -441,7 +444,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
       final vehicle = await showDialog<VolvoVehicle>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Choose your leased car'),
+          title: Text(context.tr('Choose your leased car')),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -471,7 +474,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: Text(context.tr('Cancel')),
             ),
           ],
         ),
@@ -618,18 +621,18 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
     final scope = await showDialog<_DisconnectScope>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Disconnect Volvo'),
+        title: Text(context.tr('Disconnect Volvo')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              title: const Text('This device only'),
-              subtitle: const Text('Other devices stay connected.'),
+              title: Text(context.tr('This device only')),
+              subtitle: Text(context.tr('Other devices stay connected.')),
               onTap: () =>
                   Navigator.pop(dialogContext, _DisconnectScope.thisDevice),
             ),
             ListTile(
-              title: const Text('Everywhere'),
+              title: Text(context.tr('Everywhere')),
               subtitle: const Text(
                 'Disconnect the car, phone and other devices.',
               ),
@@ -641,7 +644,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
+            child: Text(context.tr('Cancel')),
           ),
         ],
       ),
@@ -651,18 +654,18 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('Disconnect on every device?'),
+          title: Text(context.tr('Disconnect on every device?')),
           content: const Text(
             'Volvo updates will stop on this phone, the car and every other connected device. Each device will need to connect again. Saved lease plans and mileage remain on each device.',
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
+              child: Text(context.tr('Cancel')),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Disconnect everywhere'),
+              child: Text(context.tr('Disconnect everywhere')),
             ),
           ],
         ),
@@ -724,10 +727,12 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
     return '$prefix${_formatNumber(value)} km';
   }
 
-  String _commuteDaysLabel(Set<int> days) {
-    if (days.isEmpty) return 'No commute days';
+  String _commuteDaysLabel(BuildContext context, Set<int> days) {
+    if (days.isEmpty) return context.tr('No commute days');
     const names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return (days.toList()..sort()).map((day) => names[day - 1]).join(', ');
+    return (days.toList()..sort())
+        .map((day) => context.tr(names[day - 1]))
+        .join(', ');
   }
 
   @override
@@ -823,13 +828,13 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                 key: const Key('editPlanButton'),
                 onPressed: _openEditor,
                 icon: const Icon(Icons.tune_rounded),
-                label: const Text('Edit plan'),
+                label: Text(context.tr('Edit plan')),
               ),
             ),
           IconButton(
             key: const Key('settingsButton'),
             onPressed: _openSettings,
-            tooltip: 'Settings',
+            tooltip: context.tr('Settings'),
             icon: const Icon(Icons.settings_outlined),
           ),
         ],
@@ -856,13 +861,15 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                       )
                     else ...[
                       Text(
-                        'Your driving outlook',
+                        context.tr('Your driving outlook'),
                         style: Theme.of(context).textTheme.headlineMedium
                             ?.copyWith(fontWeight: FontWeight.w800),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Your lease at a glance, updated from the details you save.',
+                        context.tr(
+                          'Your lease at a glance, updated from the details you save.',
+                        ),
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
@@ -907,9 +914,11 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          _volvoConnected
-                                              ? 'Volvo connected'
-                                              : 'Manual odometer',
+                                          context.tr(
+                                            _volvoConnected
+                                                ? 'Volvo connected'
+                                                : 'Manual odometer',
+                                          ),
                                           style: TextStyle(
                                             fontWeight: FontWeight.w700,
                                           ),
@@ -950,7 +959,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                       ),
                                     ],
                                   ),
-                                  const Text('Show'),
+                                  Text(context.tr('Show')),
                                   const Icon(Icons.expand_more_rounded),
                                 ],
                               ),
@@ -981,7 +990,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                     children: [
                                       Expanded(
                                         child: Text(
-                                          'Current odometer',
+                                          context.tr('Current odometer'),
                                           style: Theme.of(context)
                                               .textTheme
                                               .titleLarge
@@ -1010,7 +1019,9 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                         ],
                                       ),
                                       IconButton(
-                                        tooltip: 'Hide odometer details',
+                                        tooltip: context.tr(
+                                          'Hide odometer details',
+                                        ),
                                         onPressed: () => setState(() {
                                           _odometerDetailsExpanded = false;
                                           if (_volvoRefreshFeedback ==
@@ -1029,11 +1040,13 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  _volvoConnected
-                                      ? 'The latest reading comes from Volvo. You can also enter one manually.'
-                                      : _volvoEnabled
-                                      ? 'Enter a reading manually, or connect Volvo for automatic updates.'
-                                      : 'Enter a reading manually.',
+                                  context.tr(
+                                    _volvoConnected
+                                        ? 'The latest reading comes from Volvo. You can also enter one manually.'
+                                        : _volvoEnabled
+                                        ? 'Enter a reading manually, or connect Volvo for automatic updates.'
+                                        : 'Enter a reading manually.',
+                                  ),
                                   style: TextStyle(
                                     color: Theme.of(context)
                                         .colorScheme
@@ -1055,9 +1068,11 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
-                                      _volvoConnected
-                                          ? 'Volvo connected'
-                                          : 'Manual entry',
+                                      context.tr(
+                                        _volvoConnected
+                                            ? 'Volvo connected'
+                                            : 'Manual entry',
+                                      ),
                                       style: Theme.of(context)
                                           .textTheme
                                           .labelLarge,
@@ -1066,11 +1081,13 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                 ),
                                 const SizedBox(height: 10),
                                 Text(
-                                  _volvoConnected
-                                      ? 'The app checks Volvo on a fresh launch or when you tap Update from Volvo. Manual entry stays available below.'
-                                      : _volvoEnabled
-                                      ? 'Connect your Volvo ID for updates when the app starts and on demand.'
-                                      : 'Volvo updates are not available in this version.',
+                                  context.tr(
+                                    _volvoConnected
+                                        ? 'The app checks Volvo on a fresh launch or when you tap Update from Volvo. Manual entry stays available below.'
+                                        : _volvoEnabled
+                                        ? 'Connect your Volvo ID for updates when the app starts and on demand.'
+                                        : 'Volvo updates are not available in this version.',
+                                  ),
                                   style: Theme.of(context).textTheme.bodySmall,
                                 ),
                                 if (_volvoEnabled) ...[
@@ -1094,9 +1111,11 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                                 : Icons.link_rounded,
                                           ),
                                           label: Text(
-                                            _volvoConnected
-                                                ? 'Update from Volvo'
-                                                : 'Connect Volvo',
+                                            context.tr(
+                                              _volvoConnected
+                                                  ? 'Update from Volvo'
+                                                  : 'Connect Volvo',
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -1110,7 +1129,9 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                             icon: const Icon(
                                               Icons.link_off_rounded,
                                             ),
-                                            label: const Text('Disconnect'),
+                                            label: Text(
+                                              context.tr('Disconnect'),
+                                            ),
                                           ),
                                         ),
                                       if (_volvoConnected &&
@@ -1145,7 +1166,9 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                             icon: const Icon(
                                               Icons.directions_car_rounded,
                                             ),
-                                            label: const Text('Change car'),
+                                            label: Text(
+                                              context.tr('Change car'),
+                                            ),
                                           ),
                                         ),
                                     ],
@@ -1179,7 +1202,9 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Text(
-                                            'Connect with your phone',
+                                            context.tr(
+                                              'Connect with your phone',
+                                            ),
                                             style: Theme.of(context)
                                                 .textTheme
                                                 .titleMedium
@@ -1188,8 +1213,10 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                                 ),
                                           ),
                                           const SizedBox(height: 8),
-                                          const Text(
-                                            'Scan this code with your phone, sign in to your Volvo ID, then keep this screen open. The car will connect automatically.',
+                                          Text(
+                                            context.tr(
+                                              'Scan this code with your phone, sign in to your Volvo ID, then keep this screen open. The car will connect automatically.',
+                                            ),
                                             textAlign: TextAlign.center,
                                           ),
                                           const SizedBox(height: 12),
@@ -1322,7 +1349,9 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                       () => _manualOdometerEditing = true,
                                     ),
                                     icon: const Icon(Icons.edit_outlined),
-                                    label: const Text('Enter a manual reading'),
+                                    label: Text(
+                                      context.tr('Enter a manual reading'),
+                                    ),
                                   ),
                                   const Padding(
                                     padding: EdgeInsets.only(left: 12),
@@ -1347,11 +1376,15 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                                 decimal: true,
                                               ),
                                           decoration: InputDecoration(
-                                            labelText: _volvoConnected
-                                                ? 'Manual odometer reading'
-                                                : 'Odometer reading',
+                                            labelText: context.tr(
+                                              _volvoConnected
+                                                  ? 'Manual odometer reading'
+                                                  : 'Odometer reading',
+                                            ),
                                             helperText: _volvoConnected
-                                                ? 'This changes LeaseGauge only; it does not change Volvo.'
+                                                ? context.tr(
+                                                    'This changes LeaseGauge only; it does not change Volvo.',
+                                                  )
                                                 : null,
                                             suffixText: 'km',
                                           ),
@@ -1365,9 +1398,11 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                             : _saveOdometer,
                                         icon: const Icon(Icons.check_rounded),
                                         label: Text(
-                                          _volvoConnected
-                                              ? 'Save manual reading'
-                                              : 'Save reading',
+                                          context.tr(
+                                            _volvoConnected
+                                                ? 'Save manual reading'
+                                                : 'Save reading',
+                                          ),
                                         ),
                                       ),
                                       if (_volvoConnected &&
@@ -1380,8 +1415,8 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                               _setPlan(plan);
                                             });
                                           },
-                                          child: const Text(
-                                            'Cancel manual entry',
+                                          child: Text(
+                                            context.tr('Cancel manual entry'),
                                           ),
                                         ),
                                     ],
@@ -1424,13 +1459,15 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                       ),
                       const SizedBox(height: 26),
                       Text(
-                        'Other rolling suggestions',
+                        context.tr('Other rolling suggestions'),
                         style: Theme.of(context).textTheme.titleLarge
                             ?.copyWith(fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'These shares are recalculated from your latest saved odometer reading. They are not measured period balances.',
+                        context.tr(
+                          'These shares are recalculated from your latest saved odometer reading. They are not measured period balances.',
+                        ),
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
@@ -1530,7 +1567,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                         children: [
                           Expanded(
                             child: Text(
-                              'Lease snapshot',
+                              context.tr('Lease snapshot'),
                               style: Theme.of(context).textTheme.titleLarge
                                   ?.copyWith(fontWeight: FontWeight.w700),
                             ),
@@ -1555,7 +1592,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                               InfoHelpItem(
                                 heading: 'The actual calculations',
                                 description:
-                                    'Already driven: ${_formatKm(plan.currentOdometerKm)} − ${_formatKm(plan.startOdometerKm)} = ${_formatKm(calculation.usedDistanceKm)}.\n\nRemaining contract: ${_formatKm(plan.allowedDistanceKm)} − ${_formatKm(calculation.usedDistanceKm)} = ${_formatKm(calculation.remainingContractKm)}.\n\nCalendar days: from today through the day before return = $remainingCalendarDays ${remainingCalendarDays == 1 ? 'day' : 'days'}. That is $fullCalendarWeeks full ${fullCalendarWeeks == 1 ? 'week' : 'weeks'} plus $extraCalendarDays extra ${extraCalendarDays == 1 ? 'day' : 'days'}.\n\nPlanned workdays: you selected ${_commuteDaysLabel(plan.commuteWeekdays)} ($selectedWorkdaysPerWeek ${selectedWorkdaysPerWeek == 1 ? 'day' : 'days'} per full week). $fullCalendarWeeks × $selectedWorkdaysPerWeek = $workdaysInFullWeeks days, plus $workdaysInExtraDays matching ${workdaysInExtraDays == 1 ? 'day' : 'days'} in the final partial week = $remainingWorkdays ${remainingWorkdays == 1 ? 'workday' : 'workdays'}.\n\nCommute reserve: $remainingWorkdays ${remainingWorkdays == 1 ? 'workday' : 'workdays'} × ${_formatKm(plan.commuteDistanceKm)} round trip = ${_formatKm(calculation.commuteReserveKm)}.\n\nLeisure distance: ${_formatKm(calculation.remainingContractKm)} − ${_formatKm(calculation.commuteReserveKm)} = ${_formatKm(calculation.leisureDistanceKm, signed: true)}.',
+                                    'Already driven: ${_formatKm(plan.currentOdometerKm)} − ${_formatKm(plan.startOdometerKm)} = ${_formatKm(calculation.usedDistanceKm)}.\n\nRemaining contract: ${_formatKm(plan.allowedDistanceKm)} − ${_formatKm(calculation.usedDistanceKm)} = ${_formatKm(calculation.remainingContractKm)}.\n\nCalendar days: from today through the day before return = $remainingCalendarDays ${remainingCalendarDays == 1 ? 'day' : 'days'}. That is $fullCalendarWeeks full ${fullCalendarWeeks == 1 ? 'week' : 'weeks'} plus $extraCalendarDays extra ${extraCalendarDays == 1 ? 'day' : 'days'}.\n\nPlanned workdays: you selected ${_commuteDaysLabel(context, plan.commuteWeekdays)} ($selectedWorkdaysPerWeek ${selectedWorkdaysPerWeek == 1 ? 'day' : 'days'} per full week). $fullCalendarWeeks × $selectedWorkdaysPerWeek = $workdaysInFullWeeks days, plus $workdaysInExtraDays matching ${workdaysInExtraDays == 1 ? 'day' : 'days'} in the final partial week = $remainingWorkdays ${remainingWorkdays == 1 ? 'workday' : 'workdays'}.\n\nCommute reserve: $remainingWorkdays ${remainingWorkdays == 1 ? 'workday' : 'workdays'} × ${_formatKm(plan.commuteDistanceKm)} round trip = ${_formatKm(calculation.commuteReserveKm)}.\n\nLeisure distance: ${_formatKm(calculation.remainingContractKm)} − ${_formatKm(calculation.commuteReserveKm)} = ${_formatKm(calculation.leisureDistanceKm, signed: true)}.',
                               ),
                               const InfoHelpItem(
                                 heading: 'If something looks wrong',
@@ -1592,7 +1629,10 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                               ),
                               _DetailRow(
                                 label: 'Commute days',
-                                value: _commuteDaysLabel(plan.commuteWeekdays),
+                                value: _commuteDaysLabel(
+                                  context,
+                                  plan.commuteWeekdays,
+                                ),
                               ),
                               _DetailRow(
                                 label: 'Planned workdays remaining',
@@ -1635,7 +1675,7 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                           ),
                         ),
                         icon: const Icon(Icons.feedback_outlined),
-                        label: const Text('Send feedback'),
+                        label: Text(context.tr('Send feedback')),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -1675,18 +1715,18 @@ class _EmptyPlan extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             Text(
-              title,
+              context.tr(title),
               style: Theme.of(context).textTheme.headlineSmall
                   ?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 10),
-            Text(description),
+            Text(context.tr(description)),
             const SizedBox(height: 24),
             FilledButton.icon(
               key: const Key('createPlanButton'),
               onPressed: onEdit,
               icon: const Icon(Icons.add_rounded),
-              label: const Text('Set up your lease'),
+              label: Text(context.tr('Set up your lease')),
             ),
           ],
         ),
@@ -1728,7 +1768,7 @@ class _LocalTrackingCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'Local reading history',
+                    context.tr('Local reading history'),
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -1760,10 +1800,12 @@ class _LocalTrackingCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            Text(message),
+            Text(context.tr(message)),
             const SizedBox(height: 6),
             Text(
-              'This history stays on this device. Different cars and plan revisions are kept separate.',
+              context.tr(
+                'This history stays on this device. Different cars and plan revisions are kept separate.',
+              ),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -1839,7 +1881,7 @@ class _PeriodComparisonCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'Calendar period comparison · new',
+                    context.tr('Calendar period comparison · new'),
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -1880,7 +1922,9 @@ class _PeriodComparisonCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'These allowances cover all driving, including planned commutes. They are separate from the rolling leisure suggestions below.',
+              context.tr(
+                'These allowances cover all driving, including planned commutes. They are separate from the rolling leisure suggestions below.',
+              ),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -1888,7 +1932,7 @@ class _PeriodComparisonCard extends StatelessWidget {
             for (final period in BudgetPeriod.values) ...[
               const Divider(height: 26),
               Text(
-                _periodName(period),
+                context.tr(_periodName(period)),
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
@@ -1989,11 +2033,11 @@ class _PeriodUsedDistanceBar extends StatelessWidget {
         : 0.0;
     final valueLabel = hasMeasurement
         ? '${formatKm(driven)} / ${formatKm(allowance)}'
-        : 'Waiting for readings';
+        : context.tr('Waiting for readings');
     final barColor = isOver ? _negativeValueColor : theme.colorScheme.primary;
 
     return Semantics(
-      label: 'Recorded driving compared with the period allowance',
+      label: context.tr('Recorded driving compared with the period allowance'),
       value: valueLabel,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2002,7 +2046,7 @@ class _PeriodUsedDistanceBar extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Recorded driving',
+                  context.tr('Recorded driving'),
                   style: theme.textTheme.labelMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -2068,7 +2112,7 @@ class _DailySuggestionCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'Suggested today',
+                    context.tr('Suggested today'),
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                       color: theme.colorScheme.primary,
@@ -2131,7 +2175,9 @@ class _DailySuggestionCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'A rolling share of your remaining leisure kilometres. This is not a measured balance for today.',
+              context.tr(
+                'A rolling share of your remaining leisure kilometres. This is not a measured balance for today.',
+              ),
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -2227,9 +2273,9 @@ class _BalanceHero extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 26),
-            const Text(
-              'LEISURE DISTANCE LEFT',
-              style: TextStyle(
+            Text(
+              context.tr('LEISURE DISTANCE LEFT'),
+              style: const TextStyle(
                 color: Color(0xFFC1DDE3),
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
@@ -2252,9 +2298,11 @@ class _BalanceHero extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              onTrack
-                  ? 'Available after planned commuting'
-                  : 'Planned driving exceeds the remaining contract',
+              context.tr(
+                onTrack
+                    ? 'Available after planned commuting'
+                    : 'Planned driving exceeds the remaining contract',
+              ),
               style: const TextStyle(
                 color: Color(0xFFE5F5F4),
                 fontSize: 12,
@@ -2288,9 +2336,11 @@ class _BalanceHero extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              onTrack
-                  ? 'On track · available beyond planned commuting'
-                  : 'Over plan · reduce future driving if possible',
+              context.tr(
+                onTrack
+                    ? 'On track · available beyond planned commuting'
+                    : 'Over plan · reduce future driving if possible',
+              ),
               style: const TextStyle(
                 color: Color(0xFFE5F5F4),
                 fontWeight: FontWeight.w600,
@@ -2369,7 +2419,7 @@ class _BudgetTile extends StatelessWidget {
               ),
               const SizedBox(height: 18),
               Text(
-                label,
+                context.tr(label),
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -2433,7 +2483,10 @@ String _periodTimingLabel(BuildContext context, DateTime resetAt) {
   String dateAndTime(DateTime value) =>
       '${localizations.formatMediumDate(value)}, '
       '${localizations.formatTimeOfDay(TimeOfDay.fromDateTime(value), alwaysUse24HourFormat: true)}';
-  return 'Calculated through ${dateAndTime(through)} · resets ${dateAndTime(resetAt)}';
+  return context.tr('Calculated through {through} · resets {resetAt}', {
+    'through': dateAndTime(through),
+    'resetAt': dateAndTime(resetAt),
+  });
 }
 
 class _DetailRow extends StatelessWidget {
@@ -2456,7 +2509,7 @@ class _DetailRow extends StatelessWidget {
         children: [
           Expanded(
             child: Text(
-              label,
+              context.tr(label),
               style: TextStyle(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),

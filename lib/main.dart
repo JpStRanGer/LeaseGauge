@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:leasegauge/data/app_preferences.dart';
 import 'package:leasegauge/data/lease_form_storage.dart';
 import 'package:leasegauge/data/legal_acceptance_storage.dart';
 import 'package:leasegauge/data/period_tracking_storage.dart';
 import 'package:leasegauge/screens/lease_home_screen.dart';
 import 'package:leasegauge/screens/legal_gate.dart';
+import 'package:leasegauge/l10n/app_localizations.dart';
 
 void main() {
   runApp(const LeaseGaugeApp());
@@ -60,6 +62,13 @@ class _LeaseGaugeAppState extends State<LeaseGaugeApp> {
       debugShowCheckedModeBanner: false,
       title: 'LeaseGauge',
       locale: _languageCode == null ? null : Locale(_languageCode!),
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: colorScheme,

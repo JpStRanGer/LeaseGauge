@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:leasegauge/data/lease_form_storage.dart';
 import 'package:leasegauge/domain/lease_calculator.dart';
 import 'package:leasegauge/screens/commute_map_screen.dart';
+import 'package:leasegauge/l10n/app_localizations.dart';
 
 class LeaseSetupScreen extends StatefulWidget {
   const LeaseSetupScreen({
@@ -102,7 +103,7 @@ class _LeaseSetupScreenState extends State<LeaseSetupScreen> {
 
   void _showMessage(String message) {
     ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+        .showSnackBar(SnackBar(content: Text(context.tr(message))));
   }
 
   Future<void> _savePlan() async {
@@ -168,9 +169,9 @@ class _LeaseSetupScreenState extends State<LeaseSetupScreen> {
       controller: controller,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        helperText: helper,
+        labelText: context.tr(label),
+        hintText: context.tr(hint),
+        helperText: helper == null ? null : context.tr(helper),
         suffixText: 'km',
       ),
     );
@@ -182,7 +183,7 @@ class _LeaseSetupScreenState extends State<LeaseSetupScreen> {
     final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Plan details')),
+      appBar: AppBar(title: Text(context.tr('Plan details'))),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 780),
@@ -190,14 +191,16 @@ class _LeaseSetupScreenState extends State<LeaseSetupScreen> {
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 44),
             children: [
               Text(
-                'Make the plan yours',
+                context.tr('Make the plan yours'),
                 style: textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.w800,
                 ),
               ),
               const SizedBox(height: 6),
               Text(
-                'These details stay on this device. Change them whenever your lease or routine changes.',
+                context.tr(
+                  'These details stay on this device. Change them whenever your lease or routine changes.',
+                ),
                 style: textTheme.bodyLarge?.copyWith(
                   color: colors.onSurfaceVariant,
                 ),
@@ -214,7 +217,10 @@ class _LeaseSetupScreenState extends State<LeaseSetupScreen> {
                     hint: 'For example: 45000',
                   ),
                   const SizedBox(height: 16),
-                  Text('Lease return date', style: textTheme.titleSmall),
+                  Text(
+                    context.tr('Lease return date'),
+                    style: textTheme.titleSmall,
+                  ),
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
@@ -224,7 +230,7 @@ class _LeaseSetupScreenState extends State<LeaseSetupScreen> {
                       icon: const Icon(Icons.calendar_month_rounded),
                       label: Text(
                         _returnDate == null
-                            ? 'Choose a date'
+                            ? context.tr('Choose a date')
                             : MaterialLocalizations.of(context)
                                   .formatShortDate(_returnDate!),
                       ),
@@ -269,20 +275,27 @@ class _LeaseSetupScreenState extends State<LeaseSetupScreen> {
                     key: const Key('chooseCommuteMapButton'),
                     onPressed: _chooseCommuteOnMap,
                     icon: const Icon(Icons.map_outlined),
-                    label: const Text('Choose route on map'),
+                    label: Text(context.tr('Choose route on map')),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Map routing is a local test feature. You can always adjust the distance manually.',
+                    context.tr(
+                      'Map routing is a local test feature. You can always adjust the distance manually.',
+                    ),
                     style: textTheme.bodySmall?.copyWith(
                       color: colors.onSurfaceVariant,
                     ),
                   ),
                   const SizedBox(height: 18),
-                  Text('Days you drive to work', style: textTheme.titleSmall),
+                  Text(
+                    context.tr('Days you drive to work'),
+                    style: textTheme.titleSmall,
+                  ),
                   const SizedBox(height: 4),
                   Text(
-                    'Leave all days off if you do not commute by car.',
+                    context.tr(
+                      'Leave all days off if you do not commute by car.',
+                    ),
                     style: textTheme.bodySmall?.copyWith(
                       color: colors.onSurfaceVariant,
                     ),
@@ -299,7 +312,7 @@ class _LeaseSetupScreenState extends State<LeaseSetupScreen> {
                       )
                         FilterChip(
                           key: Key('commuteDay$day'),
-                          label: Text(_dayLabels[day - 1]),
+                          label: Text(context.tr(_dayLabels[day - 1])),
                           selected: _commuteWeekdays.contains(day),
                           onSelected: (selected) {
                             setState(() {
@@ -328,7 +341,7 @@ class _LeaseSetupScreenState extends State<LeaseSetupScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.check_rounded),
-                  label: const Text('Save plan'),
+                  label: Text(context.tr('Save plan')),
                 ),
               ),
             ],
@@ -366,7 +379,7 @@ class _FormSection extends StatelessWidget {
                 Icon(icon, color: Theme.of(context).colorScheme.primary),
                 const SizedBox(width: 10),
                 Text(
-                  title,
+                  context.tr(title),
                   style: Theme.of(context).textTheme.titleLarge
                       ?.copyWith(fontWeight: FontWeight.w700),
                 ),
@@ -374,7 +387,7 @@ class _FormSection extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              subtitle,
+              context.tr(subtitle),
               style: TextStyle(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),

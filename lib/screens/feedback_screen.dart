@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:leasegauge/data/feedback_client.dart';
+import 'package:leasegauge/l10n/app_localizations.dart';
 
 class FeedbackScreen extends StatefulWidget {
   const FeedbackScreen({super.key, this.client});
@@ -51,7 +52,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Send feedback')),
+      appBar: AppBar(title: Text(context.tr('Send feedback'))),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 660),
@@ -62,23 +63,25 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                 const Icon(Icons.check_circle_rounded, size: 44),
                 const SizedBox(height: 12),
                 Text(
-                  'Thank you — your message was sent.',
+                  context.tr('Thank you — your message was sent.'),
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 16),
                 FilledButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Back to LeaseGauge'),
+                  child: Text(context.tr('Back to LeaseGauge')),
                 ),
               ] else ...[
                 Text(
-                  'Tell us what could be better',
+                  context.tr('Tell us what could be better'),
                   style: Theme.of(context).textTheme.headlineSmall
                       ?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'A suggestion or a problem report goes directly to the developer. You can use LeaseGauge without sending anything.',
+                Text(
+                  context.tr(
+                    'A suggestion or a problem report goes directly to the developer. You can use LeaseGauge without sending anything.',
+                  ),
                 ),
                 const SizedBox(height: 22),
                 Form(
@@ -87,16 +90,16 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       SegmentedButton<FeedbackKind>(
-                        segments: const [
+                        segments: [
                           ButtonSegment(
                             value: FeedbackKind.idea,
-                            icon: Icon(Icons.lightbulb_outline_rounded),
-                            label: Text('Suggestion'),
+                            icon: const Icon(Icons.lightbulb_outline_rounded),
+                            label: Text(context.tr('Suggestion')),
                           ),
                           ButtonSegment(
                             value: FeedbackKind.bug,
-                            icon: Icon(Icons.bug_report_outlined),
-                            label: Text('Report a problem'),
+                            icon: const Icon(Icons.bug_report_outlined),
+                            label: Text(context.tr('Report a problem')),
                           ),
                         ],
                         selected: {_kind},
@@ -113,14 +116,16 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                         minLines: 5,
                         maxLines: 9,
                         textCapitalization: TextCapitalization.sentences,
-                        decoration: const InputDecoration(
-                          labelText: 'Your message',
-                          hintText: 'What happened, or what would you like to change?',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: context.tr('Your message'),
+                          hintText: context.tr(
+                            'What happened, or what would you like to change?',
+                          ),
+                          border: const OutlineInputBorder(),
                           alignLabelWithHint: true,
                         ),
                         validator: (value) => (value?.trim().length ?? 0) < 8
-                            ? 'Write at least 8 characters.'
+                            ? context.tr('Write at least 8 characters.')
                             : null,
                       ),
                       const SizedBox(height: 10),
@@ -130,17 +135,19 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                         maxLength: 254,
                         keyboardType: TextInputType.emailAddress,
                         autofillHints: const [AutofillHints.email],
-                        decoration: const InputDecoration(
-                          labelText: 'Your email (optional)',
-                          helperText: 'Only if you want a reply.',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: context.tr('Your email (optional)'),
+                          helperText: context.tr('Only if you want a reply.'),
+                          border: const OutlineInputBorder(),
                         ),
                         validator: (value) {
                           final email = value?.trim() ?? '';
                           if (email.isEmpty) return null;
                           if (!RegExp(r'^[^@\s<>]+@[^@\s<>]+\.[^@\s<>]+$')
                               .hasMatch(email)) {
-                            return 'Enter a valid email address or leave it blank.';
+                            return context.tr(
+                              'Enter a valid email address or leave it blank.',
+                            );
                           }
                           return null;
                         },
@@ -150,12 +157,16 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Please do not include passwords, Volvo login details or other sensitive information. No car data, location or diagnostics are attached automatically. Only your message and optional reply address are sent.',
+                  context.tr(
+                    'Please do not include passwords, Volvo login details or other sensitive information. No car data, location or diagnostics are attached automatically. Only your message and optional reply address are sent.',
+                  ),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'If you are in a car, only write and send feedback while parked.',
+                  context.tr(
+                    'If you are in a car, only write and send feedback while parked.',
+                  ),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 if (_error != null) ...[
@@ -181,7 +192,9 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.send_rounded),
-                    label: Text(_sending ? 'Sending…' : 'Send feedback'),
+                    label: Text(
+                      context.tr(_sending ? 'Sending…' : 'Send feedback'),
+                    ),
                   ),
                 ),
               ],

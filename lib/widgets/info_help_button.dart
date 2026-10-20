@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:leasegauge/l10n/app_localizations.dart';
 
 class InfoHelpItem {
   const InfoHelpItem({required this.heading, required this.description});
@@ -24,28 +25,28 @@ class InfoHelpButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      tooltip: 'Help: $title',
+      tooltip: context.tr('Help: {title}', {'title': context.tr(title)}),
       color: iconColor,
       icon: const Icon(Icons.help_outline_rounded),
       onPressed: () => showDialog<void>(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text(title),
+          title: Text(context.tr(title)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(introduction),
+                Text(context.tr(introduction)),
                 for (final item in items) ...[
                   const SizedBox(height: 16),
                   Text(
-                    item.heading,
+                    context.tr(item.heading),
                     style: Theme.of(context).textTheme.titleSmall
                         ?.copyWith(fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 4),
-                  Text(item.description),
+                  Text(context.tr(item.description)),
                 ],
               ],
             ),
@@ -53,7 +54,7 @@ class InfoHelpButton extends StatelessWidget {
           actions: [
             FilledButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
+              child: Text(context.tr('Close')),
             ),
           ],
         ),

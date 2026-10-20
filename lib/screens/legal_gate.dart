@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:leasegauge/data/legal_acceptance_storage.dart';
+import 'package:leasegauge/l10n/app_localizations.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -66,7 +67,7 @@ class _LegalGateState extends State<LegalGate> {
   Widget build(BuildContext context) {
     if (_accepted == true) return widget.child;
     return Scaffold(
-      appBar: AppBar(title: const Text('Welcome to LeaseGauge')),
+      appBar: AppBar(title: Text(context.tr('Welcome to LeaseGauge'))),
       body: _accepted == null
           ? const Center(child: CircularProgressIndicator())
           : Center(
@@ -76,24 +77,28 @@ class _LegalGateState extends State<LegalGate> {
                   padding: const EdgeInsets.all(24),
                   children: [
                     Text(
-                      'Before you start',
+                      context.tr('Before you start'),
                       style: Theme.of(context).textTheme.headlineMedium
                           ?.copyWith(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 12),
-                    const Text(
-                      'LeaseGauge is a planning aid, not your lease contract. Check important figures against your car and your contract. Manual use does not require a Volvo connection.',
+                    Text(
+                      context.tr(
+                        'LeaseGauge is a planning aid, not your lease contract. Check important figures against your car and your contract. Manual use does not require a Volvo connection.',
+                      ),
                     ),
                     const SizedBox(height: 24),
                     const LegalDocumentLinks(),
                     const SizedBox(height: 18),
-                    const Text(
-                      'Please read the Terms of Use before continuing. The Privacy Notice explains what information is handled and stays available in the app. Connecting Volvo is a separate, optional choice.',
+                    Text(
+                      context.tr(
+                        'Please read the Terms of Use before continuing. The Privacy Notice explains what information is handled and stays available in the app. Connecting Volvo is a separate, optional choice.',
+                      ),
                     ),
                     const SizedBox(height: 18),
                     if (_error != null) ...[
                       Text(
-                        _error!,
+                        context.tr(_error!),
                         key: const Key('legalAcceptanceError'),
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.error,
@@ -107,13 +112,17 @@ class _LegalGateState extends State<LegalGate> {
                         key: const Key('acceptTermsButton'),
                         onPressed: _busy ? null : _accept,
                         child: Text(
-                          _busy ? 'Saving…' : 'I agree to the Terms of Use',
+                          context.tr(
+                            _busy ? 'Saving…' : 'I agree to the Terms of Use',
+                          ),
                         ),
                       ),
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      'Your choice is saved on this device only. If you use LeaseGauge on another device, you will be asked there too. If you are in a car, read and respond only while parked.',
+                      context.tr(
+                        'Your choice is saved on this device only. If you use LeaseGauge on another device, you will be asked there too. If you are in a car, read and respond only while parked.',
+                      ),
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
@@ -149,13 +158,15 @@ class LegalDocumentLinks extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(title),
+        title: Text(context.tr(title)),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'Scan this code with your phone to read the document.',
+              Text(
+                context.tr(
+                  'Scan this code with your phone to read the document.',
+                ),
               ),
               const SizedBox(height: 16),
               SizedBox(width: 200, height: 200, child: QrImageView(data: url)),
@@ -167,7 +178,7 @@ class LegalDocumentLinks extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+            child: Text(context.tr('Close')),
           ),
         ],
       ),
@@ -184,19 +195,19 @@ class LegalDocumentLinks extends StatelessWidget {
           key: const Key('openTermsButton'),
           onPressed: () => _open(context, termsUrl, 'Terms of Use'),
           icon: const Icon(Icons.description_outlined),
-          label: const Text('Terms of Use'),
+          label: Text(context.tr('Terms of Use')),
         ),
         OutlinedButton.icon(
           key: const Key('openPrivacyButton'),
           onPressed: () => _open(context, privacyUrl, 'Privacy Notice'),
           icon: const Icon(Icons.privacy_tip_outlined),
-          label: const Text('Privacy Notice'),
+          label: Text(context.tr('Privacy Notice')),
         ),
         TextButton.icon(
           key: const Key('legalQrButton'),
           onPressed: () => _showQr(context, termsUrl, 'Terms of Use'),
           icon: const Icon(Icons.qr_code_rounded),
-          label: const Text('Open on phone'),
+          label: Text(context.tr('Open on phone')),
         ),
       ],
     );

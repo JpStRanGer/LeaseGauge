@@ -7,6 +7,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:leasegauge/data/address_search_client.dart';
+import 'package:leasegauge/l10n/app_localizations.dart';
 
 /// A map-based distance picker for local testing. The public routing endpoint
 /// must be replaced with a production service before commercial distribution.
@@ -114,9 +115,11 @@ class _CommuteMapScreenState extends State<CommuteMapScreen> {
       if (!mounted) return;
       if (results.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'No Norwegian address matched that search. Try including the house number and city.',
+              context.tr(
+                'No Norwegian address matched that search. Try including the house number and city.',
+              ),
             ),
           ),
         );
@@ -131,7 +134,9 @@ class _CommuteMapScreenState extends State<CommuteMapScreen> {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
             children: [
               Text(
-                home ? 'Choose home address' : 'Choose workplace address',
+                context.tr(
+                  home ? 'Choose home address' : 'Choose workplace address',
+                ),
                 style: Theme.of(context).textTheme.titleLarge
                     ?.copyWith(fontWeight: FontWeight.w700),
               ),
@@ -170,9 +175,11 @@ class _CommuteMapScreenState extends State<CommuteMapScreen> {
     } on Exception {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Could not search for that address. Check your connection and try again.',
+            context.tr(
+              'Could not search for that address. Check your connection and try again.',
+            ),
           ),
         ),
       );
@@ -227,9 +234,11 @@ class _CommuteMapScreenState extends State<CommuteMapScreen> {
     } on Exception {
       if (!mounted || revision != _routeRevision) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Could not calculate a driving route. Try other points or enter the distance manually.',
+            context.tr(
+              'Could not calculate a driving route. Try other points or enter the distance manually.',
+            ),
           ),
         ),
       );
@@ -248,15 +257,17 @@ class _CommuteMapScreenState extends State<CommuteMapScreen> {
       autofillHints: home ? const [AutofillHints.fullStreetAddress] : null,
       maxLength: 160,
       decoration: InputDecoration(
-        labelText: home ? 'Home address' : 'Workplace address',
-        hintText: home
-            ? 'Example: Storgata 1, Oslo'
-            : 'Enter workplace address',
+        labelText: context.tr(home ? 'Home address' : 'Workplace address'),
+        hintText: context.tr(
+          home ? 'Example: Storgata 1, Oslo' : 'Enter workplace address',
+        ),
         counterText: '',
         prefixIcon: Icon(home ? Icons.home_outlined : Icons.work_outline),
         suffixIcon: IconButton(
           key: Key(home ? 'searchHomeAddress' : 'searchWorkAddress'),
-          tooltip: home ? 'Search home address' : 'Search workplace address',
+          tooltip: context.tr(
+            home ? 'Search home address' : 'Search workplace address',
+          ),
           onPressed: _searchingAddress
               ? null
               : () => _searchAddress(home: home),
@@ -271,7 +282,7 @@ class _CommuteMapScreenState extends State<CommuteMapScreen> {
   Widget build(BuildContext context) {
     final distance = _oneWayKm;
     return Scaffold(
-      appBar: AppBar(title: const Text('Choose your commute')),
+      appBar: AppBar(title: Text(context.tr('Choose your commute'))),
       body: Column(
         children: [
           Padding(
@@ -280,11 +291,13 @@ class _CommuteMapScreenState extends State<CommuteMapScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  _home == null
-                      ? 'Move the map and tap your home location.'
-                      : _work == null
-                      ? 'Now tap your workplace.'
-                      : 'Tap a road to add a via point and adjust the route (up to 5).',
+                  context.tr(
+                    _home == null
+                        ? 'Move the map and tap your home location.'
+                        : _work == null
+                        ? 'Now tap your workplace.'
+                        : 'Tap a road to add a via point and adjust the route (up to 5).',
+                  ),
                 ),
                 const SizedBox(height: 12),
                 _addressSearchField(home: true),
@@ -292,7 +305,9 @@ class _CommuteMapScreenState extends State<CommuteMapScreen> {
                 _addressSearchField(home: false),
                 const SizedBox(height: 6),
                 Text(
-                  'Norwegian address search is sent to Kartverket only when you press Search. The address is not saved by LeaseGauge. You can still select points directly on the map.',
+                  context.tr(
+                    'Norwegian address search is sent to Kartverket only when you press Search. The address is not saved by LeaseGauge. You can still select points directly on the map.',
+                  ),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
@@ -315,7 +330,7 @@ class _CommuteMapScreenState extends State<CommuteMapScreen> {
                         key: const Key('resetRouteButton'),
                         onPressed: _startOver,
                         icon: const Icon(Icons.restart_alt_rounded),
-                        label: const Text('Start over'),
+                        label: Text(context.tr('Start over')),
                       ),
                     ],
                   ),
@@ -403,7 +418,7 @@ class _CommuteMapScreenState extends State<CommuteMapScreen> {
                 onPressed: distance == null
                     ? null
                     : () => Navigator.of(context).pop(distance * 2),
-                child: const Text('Use round-trip distance'),
+                child: Text(context.tr('Use round-trip distance')),
               ),
             ),
           ),
