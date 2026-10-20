@@ -129,13 +129,20 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
     }
   }
 
-  void _showVolvoMessage(String message) {
+  void _showVolvoMessage(
+    String message, [
+    Map<String, Object?> values = const {},
+  ]) {
     if (!mounted) return;
-    setState(() => _volvoMessage = message);
+    final localizedMessage = context.tr(message, values);
+    setState(() => _volvoMessage = localizedMessage);
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
-      SnackBar(content: Text(message), duration: const Duration(seconds: 6)),
+      SnackBar(
+        content: Text(localizedMessage),
+        duration: const Duration(seconds: 6),
+      ),
     );
   }
 
@@ -150,9 +157,11 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
         reading < plan.startOdometerKm ||
         reading < plan.currentOdometerKm) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Enter a valid reading at least as high as the last saved odometer.',
+            context.tr(
+              'Enter a valid reading at least as high as the last saved odometer.',
+            ),
           ),
         ),
       );
@@ -183,7 +192,9 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            historyWarning ?? 'Odometer saved. Your budget is up to date.',
+            context.tr(
+              historyWarning ?? 'Odometer saved. Your budget is up to date.',
+            ),
           ),
         ),
       );
@@ -363,15 +374,18 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
         _manualOdometerEditing = false;
         if (!silent) {
           _volvoRefreshFeedback = _VolvoRefreshFeedback.success;
-          _volvoMessage = replacedForSelectedCar
-              ? 'Car changed. The new car\'s odometer has replaced the previous reading.'
-              : lowerReading
-              ? afterSelection
-                    ? 'Car changed, but you kept the previous odometer reading.'
-                    : 'Volvo was checked. Its reading is older, so your saved value was kept.'
-              : newerReading
-              ? 'Updated from Volvo: ${reading.kilometers.toStringAsFixed(0)} km. Your budget is up to date.'
-              : 'Volvo was checked. Your saved reading is already up to date.';
+          _volvoMessage = context.tr(
+            replacedForSelectedCar
+                ? 'Car changed. The new car\'s odometer has replaced the previous reading.'
+                : lowerReading
+                ? afterSelection
+                      ? 'Car changed, but you kept the previous odometer reading.'
+                      : 'Volvo was checked. Its reading is older, so your saved value was kept.'
+                : newerReading
+                ? 'Updated from Volvo: {kilometers} km. Your budget is up to date.'
+                : 'Volvo was checked. Your saved reading is already up to date.',
+            {'kilometers': reading.kilometers.toStringAsFixed(0)},
+          );
         }
       });
     } on VolvoVehicleSelectionRequired {
@@ -411,11 +425,14 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
       builder: (context) => AlertDialog(
         title: Text(context.tr('Use the lower reading?')),
         content: Text(
-          '${reading.vehicleLabel ?? 'The selected car'} reports '
-          '${reading.kilometers.toStringAsFixed(0)} km. Your current plan '
-          'uses ${plan.currentOdometerKm.toStringAsFixed(0)} km.\n\n'
-          'This is expected when you deliberately switch to a different car. '
-          'Use the lower reading only if this lease plan belongs to that car.',
+          context.tr(
+            '{vehicle} reports {newReading} km. Your current plan uses {currentReading} km.\n\nThis is expected when you deliberately switch to a different car. Use the lower reading only if this lease plan belongs to that car.',
+            {
+              'vehicle': reading.vehicleLabel ?? context.tr('The selected car'),
+              'newReading': reading.kilometers.toStringAsFixed(0),
+              'currentReading': plan.currentOdometerKm.toStringAsFixed(0),
+            },
+          ),
         ),
         actions: [
           TextButton(
@@ -689,9 +706,11 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
           _latestOdometerIsFromVolvo = false;
           _manualOdometerEditing = false;
           _volvoRefreshFeedback = _VolvoRefreshFeedback.idle;
-          _volvoMessage = scope == _DisconnectScope.thisDevice
-              ? 'Volvo disconnected on this device. Other devices stay connected.'
-              : 'Volvo disconnected on every device. Manual entry is still available.';
+          _volvoMessage = context.tr(
+            scope == _DisconnectScope.thisDevice
+                ? 'Volvo disconnected on this device. Other devices stay connected.'
+                : 'Volvo disconnected on every device. Manual entry is still available.',
+          );
         });
       }
     } on Exception {
@@ -924,14 +943,24 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                           ),
                                         ),
                                         Text(
-                                          !_volvoConnected
-                                              ? 'Latest reading: ${_formatKm(plan.currentOdometerKm)}'
-                                              : !_latestOdometerIsFromVolvo
-                                              ? 'Manual reading: ${_formatKm(plan.currentOdometerKm)}'
-                                              : _selectedVolvoVehicleLabel ==
-                                                    null
-                                              ? 'Latest odometer: ${_formatKm(plan.currentOdometerKm)}'
-                                              : '${_selectedVolvoVehicleLabel!} · ${_formatKm(plan.currentOdometerKm)}',
+                                          context.tr(
+                                            !_volvoConnected
+                                                ? 'Latest reading: {reading}'
+                                                : !_latestOdometerIsFromVolvo
+                                                ? 'Manual reading: {reading}'
+                                                : _selectedVolvoVehicleLabel ==
+                                                      null
+                                                ? 'Latest odometer: {reading}'
+                                                : '{vehicle} · {reading}',
+                                            {
+                                              'reading': _formatKm(
+                                                plan.currentOdometerKm,
+                                              ),
+                                              'vehicle':
+                                                  _selectedVolvoVehicleLabel ??
+                                                  '',
+                                            },
+                                          ),
                                           style: Theme.of(context)
                                               .textTheme
                                               .bodySmall,
@@ -1175,14 +1204,19 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                   ),
                                   if (_selectedVolvoVehicleLabel != null)
                                     Text(
-                                      'Selected car: $_selectedVolvoVehicleLabel',
+                                      context.tr('Selected car: {vehicle}', {
+                                        'vehicle': _selectedVolvoVehicleLabel,
+                                      }),
                                       style: Theme.of(context)
                                           .textTheme
                                           .bodySmall,
                                     ),
                                   if (volvoUpdatedLabel != null)
                                     Text(
-                                      'Car last updated: $volvoUpdatedLabel',
+                                      context.tr(
+                                        'Car last updated: {updatedAt}',
+                                        {'updatedAt': volvoUpdatedLabel},
+                                      ),
                                       style: Theme.of(context)
                                           .textTheme
                                           .bodySmall,
@@ -1298,11 +1332,13 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                               const SizedBox(width: 12),
                                               Expanded(
                                                 child: Text(
-                                                  _volvoRefreshFeedback ==
-                                                          _VolvoRefreshFeedback
-                                                              .loading
-                                                      ? 'Reading the latest odometer from Volvo…'
-                                                      : _volvoMessage ?? 'Volvo check complete.',
+                                                  context.tr(
+                                                    _volvoRefreshFeedback ==
+                                                            _VolvoRefreshFeedback
+                                                                .loading
+                                                        ? 'Reading the latest odometer from Volvo…'
+                                                        : _volvoMessage ?? 'Volvo check complete.',
+                                                  ),
                                                 ),
                                               ),
                                             ],
@@ -1329,8 +1365,9 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                       readOnly: true,
                                       enableInteractiveSelection: false,
                                       decoration: InputDecoration(
-                                        labelText:
-                                            'Automatic reading from Volvo',
+                                        labelText: context.tr(
+                                          'Automatic reading from Volvo',
+                                        ),
                                         helperText: _volvoUpdatedAt == null
                                             ? 'Retrieved from your selected Volvo.'
                                             : 'Retrieved from Volvo · $volvoUpdatedLabel',
@@ -1432,8 +1469,19 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                         value: _formatKm(budgets.todayKm, signed: true),
                         sourceOdometer: _formatKm(plan.currentOdometerKm),
                         calculation: remainingCalendarDays <= 0
-                            ? 'The return date has been reached, so there are no remaining days to divide the balance across.'
-                            : '${_formatKm(calculation!.leisureDistanceKm)} ÷ $remainingCalendarDays remaining days ≈ ${_formatKm(budgets.todayKm)} per day',
+                            ? context.tr(
+                                'The return date has been reached, so there are no remaining days to divide the balance across.',
+                              )
+                            : context.tr(
+                                '{leisureDistance} ÷ {days} remaining days ≈ {perDay} per day',
+                                {
+                                  'leisureDistance': _formatKm(
+                                    calculation!.leisureDistanceKm,
+                                  ),
+                                  'days': remainingCalendarDays,
+                                  'perDay': _formatKm(budgets.todayKm),
+                                },
+                              ),
                         resetAt: _periodResetAt(periodNow, BudgetPeriod.day),
                       ),
                       const SizedBox(height: 14),
@@ -1451,8 +1499,21 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                         remainingContract: _formatKm(
                           calculation.remainingContractKm,
                         ),
-                        calculation:
-                            '${_formatKm(calculation.remainingContractKm)} remaining contract − ${_formatKm(calculation.commuteReserveKm)} reserved commuting = ${_formatKm(calculation.leisureDistanceKm, signed: true)}',
+                        calculation: context.tr(
+                          '{remainingContract} remaining contract − {commuteReserve} reserved commuting = {leisureDistance}',
+                          {
+                            'remainingContract': _formatKm(
+                              calculation.remainingContractKm,
+                            ),
+                            'commuteReserve': _formatKm(
+                              calculation.commuteReserveKm,
+                            ),
+                            'leisureDistance': _formatKm(
+                              calculation.leisureDistanceKm,
+                              signed: true,
+                            ),
+                          },
+                        ),
                         onTrack: budgets.totalKm >= 0,
                         returnDate: MaterialLocalizations.of(context)
                             .formatShortDate(plan.returnDate),
@@ -1493,8 +1554,23 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                   signed: true,
                                 ),
                                 calculation: budgets.todayKm == 0
-                                    ? '0 km per day × the days left in this month = 0 km'
-                                    : '${_formatKm(budgets.todayKm)} per day × ${(budgets.currentMonthKm / budgets.todayKm).abs().round()} days ≈ ${_formatKm(budgets.currentMonthKm)}',
+                                    ? context.tr(
+                                        '0 km per day × the days left in this month = 0 km',
+                                      )
+                                    : context.tr(
+                                        '{perDay} per day × {days} days ≈ {total}',
+                                        {
+                                          'perDay': _formatKm(budgets.todayKm),
+                                          'days':
+                                              (budgets.currentMonthKm /
+                                                      budgets.todayKm)
+                                                  .abs()
+                                                  .round(),
+                                          'total': _formatKm(
+                                            budgets.currentMonthKm,
+                                          ),
+                                        },
+                                      ),
                                 resetAt: _periodResetAt(
                                   periodNow,
                                   BudgetPeriod.month,
@@ -1510,8 +1586,23 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                   signed: true,
                                 ),
                                 calculation: budgets.todayKm == 0
-                                    ? '0 km per day × the days left in this week = 0 km'
-                                    : '${_formatKm(budgets.todayKm)} per day × ${(budgets.currentWeekKm / budgets.todayKm).abs().round()} days ≈ ${_formatKm(budgets.currentWeekKm)}',
+                                    ? context.tr(
+                                        '0 km per day × the days left in this week = 0 km',
+                                      )
+                                    : context.tr(
+                                        '{perDay} per day × {days} days ≈ {total}',
+                                        {
+                                          'perDay': _formatKm(budgets.todayKm),
+                                          'days':
+                                              (budgets.currentWeekKm /
+                                                      budgets.todayKm)
+                                                  .abs()
+                                                  .round(),
+                                          'total': _formatKm(
+                                            budgets.currentWeekKm,
+                                          ),
+                                        },
+                                      ),
                                 resetAt: _periodResetAt(
                                   periodNow,
                                   BudgetPeriod.week,
@@ -1523,8 +1614,13 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                                 icon: Icons.today_rounded,
                                 label: 'Suggested today',
                                 value: _formatKm(budgets.todayKm, signed: true),
-                                calculation:
-                                    '${_formatKm(budgets.todayKm)} per day × 1 day = ${_formatKm(budgets.todayKm)}',
+                                calculation: context.tr(
+                                  '{perDay} per day × 1 day = {total}',
+                                  {
+                                    'perDay': _formatKm(budgets.todayKm),
+                                    'total': _formatKm(budgets.todayKm),
+                                  },
+                                ),
                                 resetAt: _periodResetAt(
                                   periodNow,
                                   BudgetPeriod.day,
@@ -1591,8 +1687,73 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                               ),
                               InfoHelpItem(
                                 heading: 'The actual calculations',
-                                description:
-                                    'Already driven: ${_formatKm(plan.currentOdometerKm)} − ${_formatKm(plan.startOdometerKm)} = ${_formatKm(calculation.usedDistanceKm)}.\n\nRemaining contract: ${_formatKm(plan.allowedDistanceKm)} − ${_formatKm(calculation.usedDistanceKm)} = ${_formatKm(calculation.remainingContractKm)}.\n\nCalendar days: from today through the day before return = $remainingCalendarDays ${remainingCalendarDays == 1 ? 'day' : 'days'}. That is $fullCalendarWeeks full ${fullCalendarWeeks == 1 ? 'week' : 'weeks'} plus $extraCalendarDays extra ${extraCalendarDays == 1 ? 'day' : 'days'}.\n\nPlanned workdays: you selected ${_commuteDaysLabel(context, plan.commuteWeekdays)} ($selectedWorkdaysPerWeek ${selectedWorkdaysPerWeek == 1 ? 'day' : 'days'} per full week). $fullCalendarWeeks × $selectedWorkdaysPerWeek = $workdaysInFullWeeks days, plus $workdaysInExtraDays matching ${workdaysInExtraDays == 1 ? 'day' : 'days'} in the final partial week = $remainingWorkdays ${remainingWorkdays == 1 ? 'workday' : 'workdays'}.\n\nCommute reserve: $remainingWorkdays ${remainingWorkdays == 1 ? 'workday' : 'workdays'} × ${_formatKm(plan.commuteDistanceKm)} round trip = ${_formatKm(calculation.commuteReserveKm)}.\n\nLeisure distance: ${_formatKm(calculation.remainingContractKm)} − ${_formatKm(calculation.commuteReserveKm)} = ${_formatKm(calculation.leisureDistanceKm, signed: true)}.',
+                                description: context.tr(
+                                  'Already driven: {currentOdometer} − {startOdometer} = {usedDistance}.\n\nRemaining contract: {allowedDistance} − {usedDistance} = {remainingContract}.\n\nCalendar days: from today through the day before return = {remainingCalendarDays} {calendarDayUnit}. That is {fullCalendarWeeks} full {weekUnit} plus {extraCalendarDays} extra {extraDayUnit}.\n\nPlanned workdays: you selected {commuteDays} ({selectedWorkdaysPerWeek} {selectedDayUnit} per full week). {fullCalendarWeeks} × {selectedWorkdaysPerWeek} = {workdaysInFullWeeks} days, plus {workdaysInExtraDays} matching {matchingDayUnit} in the final partial week = {remainingWorkdays} {workdayUnit}.\n\nCommute reserve: {remainingWorkdays} {workdayUnit} × {commuteDistance} round trip = {commuteReserve}.\n\nLeisure distance: {remainingContract} − {commuteReserve} = {leisureDistance}.',
+                                  {
+                                    'currentOdometer': _formatKm(
+                                      plan.currentOdometerKm,
+                                    ),
+                                    'startOdometer': _formatKm(
+                                      plan.startOdometerKm,
+                                    ),
+                                    'usedDistance': _formatKm(
+                                      calculation.usedDistanceKm,
+                                    ),
+                                    'allowedDistance': _formatKm(
+                                      plan.allowedDistanceKm,
+                                    ),
+                                    'remainingContract': _formatKm(
+                                      calculation.remainingContractKm,
+                                    ),
+                                    'remainingCalendarDays':
+                                        remainingCalendarDays,
+                                    'calendarDayUnit': context.tr(
+                                      remainingCalendarDays == 1
+                                          ? 'day'
+                                          : 'days',
+                                    ),
+                                    'fullCalendarWeeks': fullCalendarWeeks,
+                                    'weekUnit': context.tr(
+                                      fullCalendarWeeks == 1 ? 'week' : 'weeks',
+                                    ),
+                                    'extraCalendarDays': extraCalendarDays,
+                                    'extraDayUnit': context.tr(
+                                      extraCalendarDays == 1 ? 'day' : 'days',
+                                    ),
+                                    'commuteDays': _commuteDaysLabel(
+                                      context,
+                                      plan.commuteWeekdays,
+                                    ),
+                                    'selectedWorkdaysPerWeek':
+                                        selectedWorkdaysPerWeek,
+                                    'selectedDayUnit': context.tr(
+                                      selectedWorkdaysPerWeek == 1
+                                          ? 'day'
+                                          : 'days',
+                                    ),
+                                    'workdaysInFullWeeks': workdaysInFullWeeks,
+                                    'workdaysInExtraDays': workdaysInExtraDays,
+                                    'matchingDayUnit': context.tr(
+                                      workdaysInExtraDays == 1 ? 'day' : 'days',
+                                    ),
+                                    'remainingWorkdays': remainingWorkdays,
+                                    'workdayUnit': context.tr(
+                                      remainingWorkdays == 1
+                                          ? 'workday'
+                                          : 'workdays',
+                                    ),
+                                    'commuteDistance': _formatKm(
+                                      plan.commuteDistanceKm,
+                                    ),
+                                    'commuteReserve': _formatKm(
+                                      calculation.commuteReserveKm,
+                                    ),
+                                    'leisureDistance': _formatKm(
+                                      calculation.leisureDistanceKm,
+                                      signed: true,
+                                    ),
+                                  },
+                                ),
                               ),
                               const InfoHelpItem(
                                 heading: 'If something looks wrong',
@@ -1636,13 +1797,21 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                               ),
                               _DetailRow(
                                 label: 'Planned workdays remaining',
-                                value:
-                                    '$remainingWorkdays ${remainingWorkdays == 1 ? 'day' : 'days'}',
+                                value: context.tr(
+                                  remainingWorkdays == 1
+                                      ? '{count} day'
+                                      : '{count} days',
+                                  {'count': remainingWorkdays},
+                                ),
                               ),
                               _DetailRow(
                                 label: 'Calendar days remaining',
-                                value:
-                                    '$remainingCalendarDays ${remainingCalendarDays == 1 ? 'day' : 'days'}',
+                                value: context.tr(
+                                  remainingCalendarDays == 1
+                                      ? '{count} day'
+                                      : '{count} days',
+                                  {'count': remainingCalendarDays},
+                                ),
                               ),
                               _DetailRow(
                                 label: 'Return date',
@@ -1656,9 +1825,11 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                       ),
                       const SizedBox(height: 18),
                       Text(
-                        _volvoConnected
-                            ? 'Your odometer is updated from the selected Volvo when the app opens and when you request an update. Manual entry remains available. Commutes are reserved only on your selected days, and budgets are spread evenly across calendar days.'
-                            : 'Your odometer is entered manually for now; the app does not read the car automatically. Commutes are reserved only on your selected days, and budgets are spread evenly across calendar days.',
+                        context.tr(
+                          _volvoConnected
+                              ? 'Your odometer is updated from the selected Volvo when the app opens and when you request an update. Manual entry remains available. Commutes are reserved only on your selected days, and budgets are spread evenly across calendar days.'
+                              : 'Your odometer is entered manually for now; the app does not read the car automatically. Commutes are reserved only on your selected days, and budgets are spread evenly across calendar days.',
+                        ),
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
@@ -1749,13 +1920,26 @@ class _LocalTrackingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final message =
-        error ??
-        (manualReadingCount == 0 && volvoReadingCount == 0
-            ? 'No readings saved on this device yet.'
-            : volvoReadingCount == 0
-            ? '$manualReadingCount manual reading${manualReadingCount == 1 ? '' : 's'} saved on this device.'
-            : '$manualReadingCount manual and $volvoReadingCount Volvo reading${volvoReadingCount == 1 ? '' : 's'} saved on this device.');
+    final message = error != null
+        ? context.tr(error!)
+        : manualReadingCount == 0 && volvoReadingCount == 0
+        ? context.tr('No readings saved on this device yet.')
+        : volvoReadingCount == 0
+        ? context.tr(
+            manualReadingCount == 1
+                ? '{manualCount} manual reading saved on this device.'
+                : '{manualCount} manual readings saved on this device.',
+            {'manualCount': manualReadingCount},
+          )
+        : context.tr(
+            volvoReadingCount == 1
+                ? '{manualCount} manual and {volvoCount} Volvo reading saved on this device.'
+                : '{manualCount} manual and {volvoCount} Volvo readings saved on this device.',
+            {
+              'manualCount': manualReadingCount,
+              'volvoCount': volvoReadingCount,
+            },
+          );
     return Card(
       key: const Key('localTrackingCard'),
       margin: EdgeInsets.zero,
@@ -1800,7 +1984,7 @@ class _LocalTrackingCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            Text(context.tr(message)),
+            Text(message),
             const SizedBox(height: 6),
             Text(
               context.tr(
@@ -1847,18 +2031,35 @@ class _PeriodComparisonCard extends StatelessWidget {
     BudgetPeriod period,
     PeriodBudget? budget,
   ) {
-    if (historyError != null) return 'Local history is unavailable.';
-    if (budget == null) return 'Missing start reading on this device.';
+    if (historyError != null) {
+      return context.tr('Local history is unavailable.');
+    }
+    if (budget == null) {
+      return context.tr('Missing start reading on this device.');
+    }
     return switch (budget.basis) {
-      PeriodBasis.measured =>
-        'Driven: ${formatKm(budget.drivenKm!)} · remaining as of the last reading:',
-      PeriodBasis.partialMeasured =>
-        'Recorded driving since ${_measurementTime(context, budget.measuredFrom!)}: ${formatKm(budget.drivenKm!)} · remaining after recorded driving:',
-      PeriodBasis.missingStart =>
-        'Add a reading to start measuring from now. The app will clearly mark it as a partial ${period.name} measurement.',
-      PeriodBasis.missingLatest =>
-        'Start reading saved at ${_measurementTime(context, budget.measuredFrom!)}. Add a newer reading to measure the distance driven.',
-      PeriodBasis.beforeTracking => 'Tracking has not started for this period.',
+      PeriodBasis.measured => context.tr(
+        'Driven: {driven} · remaining as of the last reading:',
+        {'driven': formatKm(budget.drivenKm!)},
+      ),
+      PeriodBasis.partialMeasured => context.tr(
+        'Recorded driving since {measuredFrom}: {driven} · remaining after recorded driving:',
+        {
+          'measuredFrom': _measurementTime(context, budget.measuredFrom!),
+          'driven': formatKm(budget.drivenKm!),
+        },
+      ),
+      PeriodBasis.missingStart => context.tr(
+        'Add a reading to start measuring from now. The app will clearly mark it as a partial {period} measurement.',
+        {'period': context.tr(period.name)},
+      ),
+      PeriodBasis.missingLatest => context.tr(
+        'Start reading saved at {measuredFrom}. Add a newer reading to measure the distance driven.',
+        {'measuredFrom': _measurementTime(context, budget.measuredFrom!)},
+      ),
+      PeriodBasis.beforeTracking => context.tr(
+        'Tracking has not started for this period.',
+      ),
     };
   }
 
@@ -1867,8 +2068,18 @@ class _PeriodComparisonCard extends StatelessWidget {
     final theme = Theme.of(context);
     final todayBudget = budgets?[BudgetPeriod.day];
     final todayCalculation = todayBudget == null
-        ? 'A calculation appears after the first local reading.'
-        : '${formatKm(todayBudget.allowanceKm)} full allowance − ${formatKm(todayBudget.drivenKm ?? 0)} recorded driving = ${formatKm(todayBudget.remainingKm ?? todayBudget.allowanceKm, signed: true)} remaining from recorded driving.';
+        ? context.tr('A calculation appears after the first local reading.')
+        : context.tr(
+            '{allowance} full allowance − {driven} recorded driving = {remaining} remaining from recorded driving.',
+            {
+              'allowance': formatKm(todayBudget.allowanceKm),
+              'driven': formatKm(todayBudget.drivenKm ?? 0),
+              'remaining': formatKm(
+                todayBudget.remainingKm ?? todayBudget.allowanceKm,
+                signed: true,
+              ),
+            },
+          );
     return Card(
       key: const Key('periodComparisonCard'),
       margin: EdgeInsets.zero,
@@ -1948,8 +2159,12 @@ class _PeriodComparisonCard extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 budgets == null
-                    ? 'Full-period allowance (fixed): waiting for a local start reading'
-                    : 'Full-period allowance (fixed): ${formatKm(budgets![period]!.allowanceKm)}',
+                    ? context.tr(
+                        'Full-period allowance (fixed): waiting for a local start reading',
+                      )
+                    : context.tr('Full-period allowance (fixed): {allowance}', {
+                        'allowance': formatKm(budgets![period]!.allowanceKm),
+                      }),
               ),
               const SizedBox(height: 4),
               Text(
@@ -1977,7 +2192,12 @@ class _PeriodComparisonCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Measured through ${MaterialLocalizations.of(context).formatMediumDate(budgets![period]!.measuredThrough!.toLocal())}, ${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(budgets![period]!.measuredThrough!.toLocal()), alwaysUse24HourFormat: true)}',
+                  context.tr('Measured through {measuredThrough}', {
+                    'measuredThrough': _measurementTime(
+                      context,
+                      budgets![period]!.measuredThrough!,
+                    ),
+                  }),
                   style: theme.textTheme.bodySmall,
                 ),
               ] else if (budgets?[period]?.basis ==
@@ -1994,7 +2214,19 @@ class _PeriodComparisonCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Covers recorded driving from ${_measurementTime(context, budgets![period]!.measuredFrom!)} through ${_measurementTime(context, budgets![period]!.measuredThrough!)}. Driving before the first reading is not included.',
+                  context.tr(
+                    'Covers recorded driving from {measuredFrom} through {measuredThrough}. Driving before the first reading is not included.',
+                    {
+                      'measuredFrom': _measurementTime(
+                        context,
+                        budgets![period]!.measuredFrom!,
+                      ),
+                      'measuredThrough': _measurementTime(
+                        context,
+                        budgets![period]!.measuredThrough!,
+                      ),
+                    },
+                  ),
                   style: theme.textTheme.bodySmall,
                 ),
               ],
@@ -2166,7 +2398,9 @@ class _DailySuggestionCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'Based on saved odometer: $sourceOdometer',
+              context.tr('Based on saved odometer: {odometer}', {
+                'odometer': sourceOdometer,
+              }),
               key: const Key('dailySuggestionOdometer'),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
@@ -2311,10 +2545,15 @@ class _BalanceHero extends StatelessWidget {
             ),
             const SizedBox(height: 7),
             Semantics(
-              label: 'Leisure distance available compared with the remaining contract distance',
+              label: context.tr(
+                'Leisure distance available compared with the remaining contract distance',
+              ),
               value: onTrack
-                  ? '$balance of $remainingContract'
-                  : '$balance, over plan',
+                  ? context.tr('{balance} of {remainingContract}', {
+                      'balance': balance,
+                      'remainingContract': remainingContract,
+                    })
+                  : context.tr('{balance}, over plan', {'balance': balance}),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(99),
                 child: LinearProgressIndicator(
@@ -2329,8 +2568,16 @@ class _BalanceHero extends StatelessWidget {
             const SizedBox(height: 7),
             Text(
               onTrack
-                  ? '$balance of $remainingContract remaining after the commute reserve'
-                  : '$balance available after planned commuting',
+                  ? context.tr(
+                      '{balance} of {remainingContract} remaining after the commute reserve',
+                      {
+                        'balance': balance,
+                        'remainingContract': remainingContract,
+                      },
+                    )
+                  : context.tr('{balance} available after planned commuting', {
+                      'balance': balance,
+                    }),
               key: const Key('leisureBalanceBarLabel'),
               style: const TextStyle(color: Color(0xFFC1DDE3), fontSize: 12),
             ),
@@ -2348,7 +2595,7 @@ class _BalanceHero extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             Text(
-              'Until $returnDate',
+              context.tr('Until {returnDate}', {'returnDate': returnDate}),
               style: const TextStyle(color: Color(0xFFC1DDE3)),
             ),
           ],

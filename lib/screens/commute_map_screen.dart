@@ -324,7 +324,11 @@ class _CommuteMapScreenState extends State<CommuteMapScreen> {
                         key: const Key('removeViaButton'),
                         onPressed: _via.isEmpty ? null : _removeLastVia,
                         icon: const Icon(Icons.undo_rounded),
-                        label: Text('Remove last via point (${_via.length})'),
+                        label: Text(
+                          context.tr('Remove last via point ({count})', {
+                            'count': _via.length,
+                          }),
+                        ),
                       ),
                       TextButton.icon(
                         key: const Key('resetRouteButton'),
@@ -337,7 +341,13 @@ class _CommuteMapScreenState extends State<CommuteMapScreen> {
                 if (_loading) const LinearProgressIndicator(),
                 if (distance != null)
                   Text(
-                    'Driving route: ${distance.toStringAsFixed(1)} km one way · ${(distance * 2).toStringAsFixed(1)} km round trip',
+                    context.tr(
+                      'Driving route: {oneWay} km one way · {roundTrip} km round trip',
+                      {
+                        'oneWay': distance.toStringAsFixed(1),
+                        'roundTrip': (distance * 2).toStringAsFixed(1),
+                      },
+                    ),
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
               ],
