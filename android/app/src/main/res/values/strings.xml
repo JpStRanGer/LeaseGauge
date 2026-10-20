@@ -1,0 +1,6 @@
+<resources>
+    <string name="startup_reminder_channel_name">Before-you-drive reminders</string>
+    <string name="startup_reminder_channel_description">Optional quiet reminders when the car system starts.</string>
+    <string name="startup_reminder_title">Update your mileage before driving</string>
+    <string name="startup_reminder_body">Open LeaseGauge to retrieve the latest odometer reading from Volvo.</string>
+</resources>

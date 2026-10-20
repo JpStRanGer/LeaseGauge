@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:leasegauge/data/app_preferences.dart';
 import 'package:leasegauge/data/lease_form_storage.dart';
 import 'package:leasegauge/data/legal_acceptance_storage.dart';
 import 'package:leasegauge/data/period_tracking_storage.dart';
@@ -9,17 +10,44 @@ void main() {
   runApp(const LeaseGaugeApp());
 }
 
-class LeaseGaugeApp extends StatelessWidget {
+class LeaseGaugeApp extends StatefulWidget {
   const LeaseGaugeApp({
     super.key,
     this.storage,
     this.trackingStore,
     this.legalStore,
+    this.preferencesStore,
   });
 
   final LeaseFormStore? storage;
   final PeriodTrackingStore? trackingStore;
   final LegalAcceptanceStore? legalStore;
+  final AppPreferencesStore? preferencesStore;
+
+  @override
+  State<LeaseGaugeApp> createState() => _LeaseGaugeAppState();
+}
+
+class _LeaseGaugeAppState extends State<LeaseGaugeApp> {
+  late final AppPreferencesStore _preferencesStore;
+  String? _languageCode;
+
+  @override
+  void initState() {
+    super.initState();
+    _preferencesStore = widget.preferencesStore ?? LocalAppPreferencesStore();
+    _loadLanguage();
+  }
+
+  Future<void> _loadLanguage() async {
+    final languageCode = await _preferencesStore.loadLanguageCode();
+    if (mounted) setState(() => _languageCode = languageCode);
+  }
+
+  Future<void> _setLanguage(String? languageCode) async {
+    await _preferencesStore.saveLanguageCode(languageCode);
+    if (mounted) setState(() => _languageCode = languageCode);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,6 +59,7 @@ class LeaseGaugeApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'LeaseGauge',
+      locale: _languageCode == null ? null : Locale(_languageCode!),
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: colorScheme,
@@ -66,10 +95,12 @@ class LeaseGaugeApp extends StatelessWidget {
         ),
       ),
       home: LegalGate(
-        store: legalStore ?? LocalLegalAcceptanceStore(),
+        store: widget.legalStore ?? LocalLegalAcceptanceStore(),
         child: LeaseHomeScreen(
-          storage: storage ?? LeaseFormStorage(),
-          trackingStore: trackingStore ?? LocalPeriodTrackingStore(),
+          storage: widget.storage ?? LeaseFormStorage(),
+          trackingStore: widget.trackingStore ?? LocalPeriodTrackingStore(),
+          languageCode: _languageCode,
+          onLanguageChanged: _setLanguage,
         ),
       ),
     );

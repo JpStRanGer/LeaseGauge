@@ -11,6 +11,7 @@ import 'package:leasegauge/widgets/info_help_button.dart';
 import 'package:leasegauge/screens/lease_setup_screen.dart';
 import 'package:leasegauge/screens/feedback_screen.dart';
 import 'package:leasegauge/screens/legal_gate.dart';
+import 'package:leasegauge/screens/settings_screen.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -23,10 +24,14 @@ class LeaseHomeScreen extends StatefulWidget {
     super.key,
     required this.storage,
     required this.trackingStore,
+    required this.languageCode,
+    required this.onLanguageChanged,
   });
 
   final LeaseFormStore storage;
   final PeriodTrackingStore trackingStore;
+  final String? languageCode;
+  final Future<void> Function(String? languageCode) onLanguageChanged;
 
   @override
   State<LeaseHomeScreen> createState() => _LeaseHomeScreenState();
@@ -226,6 +231,17 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
         _loadFailed = true;
       });
     }
+  }
+
+  Future<void> _openSettings() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (context) => SettingsScreen(
+          languageCode: widget.languageCode,
+          onLanguageChanged: widget.onLanguageChanged,
+        ),
+      ),
+    );
   }
 
   Future<void> _restoreAndRefreshVolvo() async {
@@ -810,6 +826,12 @@ class _LeaseHomeScreenState extends State<LeaseHomeScreen> {
                 label: const Text('Edit plan'),
               ),
             ),
+          IconButton(
+            key: const Key('settingsButton'),
+            onPressed: _openSettings,
+            tooltip: 'Settings',
+            icon: const Icon(Icons.settings_outlined),
+          ),
         ],
       ),
       body: _loading
